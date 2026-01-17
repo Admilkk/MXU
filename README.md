@@ -88,7 +88,7 @@ your-project/
 
 ### 作为独立 GUI 使用
 
-1. 将编译好的 MXU 可执行文件放入你的 MaaFramework 项目目录
+1. 将编译好的 MXU 可执行文件放入你的项目目录
 2. 下载并配置 MaaFramework 运行时库到 `maafw` 文件夹
 3. 确保同级目录下存在 `interface.json` 文件
 4. 运行 MXU
