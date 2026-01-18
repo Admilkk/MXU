@@ -173,6 +173,69 @@ function App() {
     return () => document.removeEventListener('contextmenu', handleContextMenu);
   }, []);
 
+  // 屏蔽浏览器默认快捷键
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+      // F5 - 刷新（仅生产环境屏蔽）
+      if (e.key === 'F5' && import.meta.env.PROD) {
+        e.preventDefault();
+        return;
+      }
+
+      // Ctrl/Cmd 组合键
+      if (isCtrlOrMeta) {
+        // Ctrl+R 刷新（仅生产环境屏蔽）
+        if (e.key.toLowerCase() === 'r' && import.meta.env.PROD) {
+          e.preventDefault();
+          return;
+        }
+
+        const blockedKeys = [
+          'f', // 搜索
+          's', // 保存
+          'u', // 查看源代码
+          'p', // 打印
+          'g', // 查找下一个
+          'j', // 下载
+          'h', // 历史记录
+          'd', // 书签
+          'n', // 新窗口
+          't', // 新标签页
+          'w', // 关闭标签页
+        ];
+
+        if (blockedKeys.includes(e.key.toLowerCase())) {
+          e.preventDefault();
+          return;
+        }
+
+        // Ctrl+Shift 组合键
+        if (e.shiftKey) {
+          const blockedShiftKeys = [
+            'i', // 开发者工具
+            't', // 恢复标签页
+            'n', // 新隐私窗口
+          ];
+          if (blockedShiftKeys.includes(e.key.toLowerCase())) {
+            e.preventDefault();
+            return;
+          }
+        }
+      }
+
+      // F12 - 开发者工具（生产环境屏蔽）
+      if (e.key === 'F12' && import.meta.env.PROD) {
+        e.preventDefault();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // 设置页面
   if (currentPage === 'settings') {
     return <SettingsPage />;
