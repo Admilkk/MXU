@@ -13,7 +13,7 @@ const DEFAULT_FPS = 5;
 
 export function ScreenshotPanel() {
   const { t } = useTranslation();
-  const { activeInstanceId, instanceConnectionStatus } = useAppStore();
+  const { activeInstanceId, instanceConnectionStatus, sidePanelExpanded } = useAppStore();
   
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
@@ -157,24 +157,24 @@ export function ScreenshotPanel() {
     };
   }, [instanceId]);
 
-  // 面板折叠时停止流
+  // 面板折叠或被隐藏时停止流
   useEffect(() => {
-    if (isCollapsed && isStreaming) {
+    if ((isCollapsed || !sidePanelExpanded) && isStreaming) {
       streamingRef.current = false;
       setIsStreaming(false);
     }
-  }, [isCollapsed, isStreaming]);
+  }, [isCollapsed, isStreaming, sidePanelExpanded]);
 
-  // 连接成功后自动开始实时截图
+  // 连接成功后自动开始实时截图（仅当面板可见时）
   const connectionStatus = instanceId ? instanceConnectionStatus[instanceId] : undefined;
   useEffect(() => {
-    if (connectionStatus === 'Connected' && !isStreaming && !isCollapsed && instanceId) {
+    if (connectionStatus === 'Connected' && !isStreaming && !isCollapsed && sidePanelExpanded && instanceId) {
       streamingRef.current = true;
       setIsStreaming(true);
       setError(null);
       streamLoop();
     }
-  }, [connectionStatus, instanceId, isCollapsed]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [connectionStatus, instanceId, isCollapsed, sidePanelExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="bg-bg-secondary rounded-lg border border-border">

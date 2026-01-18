@@ -61,6 +61,7 @@ function App() {
     projectInterface,
     interfaceTranslations,
     language,
+    sidePanelExpanded,
   } = useAppStore();
 
   const initialized = useRef(false);
@@ -252,11 +253,16 @@ function App() {
 
         {/* 右侧信息面板 */}
         <div className="w-80 flex flex-col gap-3 p-3 bg-bg-primary overflow-y-auto">
-          {/* 连接设置（设备/资源选择） */}
-          <ConnectionPanel />
+          {/* 连接设置和实时截图（可折叠） */}
+          {sidePanelExpanded && (
+            <>
+              {/* 连接设置（设备/资源选择） */}
+              <ConnectionPanel />
 
-          {/* 实时截图 */}
-          <ScreenshotPanel />
+              {/* 实时截图 */}
+              <ScreenshotPanel />
+            </>
+          )}
 
           {/* 运行日志 */}
           <LogsPanel />

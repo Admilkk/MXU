@@ -88,6 +88,11 @@ interface AppState {
   cachedWin32Windows: Win32Window[];
   setCachedAdbDevices: (devices: AdbDevice[]) => void;
   setCachedWin32Windows: (windows: Win32Window[]) => void;
+
+  // 右侧面板折叠状态（控制连接设置和截图面板的显示）
+  sidePanelExpanded: boolean;
+  setSidePanelExpanded: (expanded: boolean) => void;
+  toggleSidePanelExpanded: () => void;
 }
 
 // 生成唯一 ID
@@ -458,6 +463,11 @@ export const useAppStore = create<AppState>()(
       cachedWin32Windows: [],
       setCachedAdbDevices: (devices) => set({ cachedAdbDevices: devices }),
       setCachedWin32Windows: (windows) => set({ cachedWin32Windows: windows }),
+
+      // 右侧面板折叠状态
+      sidePanelExpanded: true,
+      setSidePanelExpanded: (expanded) => set({ sidePanelExpanded: expanded }),
+      toggleSidePanelExpanded: () => set((state) => ({ sidePanelExpanded: !state.sidePanelExpanded })),
     })
   )
 );

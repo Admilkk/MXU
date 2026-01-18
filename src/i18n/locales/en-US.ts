@@ -133,6 +133,8 @@ export default {
     autoscroll: 'Auto Scroll',
     noLogs: 'No logs',
     copyAll: 'Copy All',
+    expand: 'Expand panels above',
+    collapse: 'Collapse panels above',
   },
 
   // Add task panel

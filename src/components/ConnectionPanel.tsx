@@ -472,14 +472,14 @@ export function ConnectionPanel() {
       {/* 可折叠内容 */}
       {!isCollapsed && (
         <div className="p-3 space-y-3">
-          {/* 控制器选择 */}
+          {/* 控制器选择 - 标题和按钮同一行 */}
           {controllers.length > 1 && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs text-text-secondary flex-shrink-0">
                 {getControllerIcon(controllerType)}
                 <span>{t('controller.title')}</span>
               </div>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1 justify-end">
                 {controllers.map(controller => (
                   <button
                     key={controller.name}
@@ -495,7 +495,7 @@ export function ConnectionPanel() {
                     }}
                     disabled={isConnecting}
                     className={clsx(
-                      'px-2 py-1 text-xs rounded-md transition-colors',
+                      'px-2 py-0.5 text-xs rounded-md transition-colors',
                       currentControllerName === controller.name
                         ? 'bg-accent text-white'
                         : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
@@ -641,107 +641,103 @@ export function ConnectionPanel() {
           {/* 分隔线 */}
           <div className="border-t border-border" />
 
-          {/* 资源选择 */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs text-text-secondary">
+          {/* 资源选择 - 标题、下拉框、加载按钮同一行 */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-xs text-text-secondary flex-shrink-0">
               <FolderOpen className="w-4 h-4" />
               <span>{t('resource.title')}</span>
             </div>
-
-            {/* 资源下拉框和加载按钮同一行 */}
-            <div className="flex gap-2">
-              {/* 资源下拉框 */}
-              <div className="relative flex-1 min-w-0">
-                <button
-                  onClick={() => setShowResourceDropdown(!showResourceDropdown)}
-                  disabled={isLoadingResource || isResourceLoaded}
-                  className={clsx(
-                    'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md border transition-colors text-sm',
-                    'bg-bg-tertiary border-border',
-                    isResourceLoaded
-                      ? 'opacity-60 cursor-not-allowed'
-                      : 'hover:border-accent cursor-pointer'
-                  )}
-                >
-                  <span className={clsx(
-                    'truncate',
-                    currentResource ? 'text-text-primary' : 'text-text-muted'
-                  )}>
-                    {currentResource
-                      ? getResourceDisplayName(currentResource)
-                      : t('resource.selectResource')}
-                  </span>
-                  <ChevronDown className={clsx(
-                    'w-4 h-4 text-text-muted transition-transform flex-shrink-0',
-                    showResourceDropdown && 'rotate-180'
-                  )} />
-                </button>
-
-                {/* 资源下拉菜单 - 向上展开避免遮挡 */}
-                {showResourceDropdown && (
-                  <div className="absolute z-[100] w-full bottom-full mb-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {resources.map(resource => (
-                      <button
-                        key={resource.name}
-                        onClick={() => {
-                          setSelectedResource(instanceId, resource.name);
-                          setShowResourceDropdown(false);
-                          setIsResourceLoaded(false);
-                        }}
-                        className={clsx(
-                          'w-full flex items-center justify-between px-2.5 py-1.5 text-left transition-colors',
-                          'hover:bg-bg-hover',
-                          currentResourceName === resource.name && 'bg-accent/10'
-                        )}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm text-text-primary truncate">
-                            {getResourceDisplayName(resource)}
-                          </div>
-                          {resource.description && (
-                            <div className="text-xs text-text-muted truncate">
-                              {resolveI18nText(resource.description, translations)}
-                            </div>
-                          )}
-                        </div>
-                        {currentResourceName === resource.name && (
-                          <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* 加载资源按钮 */}
+            {/* 资源下拉框 */}
+            <div className="relative flex-1 min-w-0">
               <button
-                onClick={handleLoadResource}
-                disabled={isLoadingResource || isResourceLoaded || !currentResource}
+                onClick={() => setShowResourceDropdown(!showResourceDropdown)}
+                disabled={isLoadingResource || isResourceLoaded}
                 className={clsx(
-                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap',
-                  isLoadingResource || isResourceLoaded || !currentResource
-                    ? 'bg-accent/50 text-white/70 cursor-not-allowed'
-                    : 'bg-accent text-white hover:bg-accent-hover'
+                  'w-full flex items-center justify-between px-2 py-1 rounded-md border transition-colors text-sm',
+                  'bg-bg-tertiary border-border',
+                  isResourceLoaded
+                    ? 'opacity-60 cursor-not-allowed'
+                    : 'hover:border-accent cursor-pointer'
                 )}
               >
-                {isLoadingResource ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : isResourceLoaded ? (
-                  <CheckCircle className="w-3.5 h-3.5" />
-                ) : (
-                  <FolderOpen className="w-3.5 h-3.5" />
-                )}
+                <span className={clsx(
+                  'truncate',
+                  currentResource ? 'text-text-primary' : 'text-text-muted'
+                )}>
+                  {currentResource
+                    ? getResourceDisplayName(currentResource)
+                    : t('resource.selectResource')}
+                </span>
+                <ChevronDown className={clsx(
+                  'w-4 h-4 text-text-muted transition-transform flex-shrink-0',
+                  showResourceDropdown && 'rotate-180'
+                )} />
               </button>
+
+              {/* 资源下拉菜单 - 向上展开避免遮挡 */}
+              {showResourceDropdown && (
+                <div className="absolute z-[100] w-full bottom-full mb-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {resources.map(resource => (
+                    <button
+                      key={resource.name}
+                      onClick={() => {
+                        setSelectedResource(instanceId, resource.name);
+                        setShowResourceDropdown(false);
+                        setIsResourceLoaded(false);
+                      }}
+                      className={clsx(
+                        'w-full flex items-center justify-between px-2.5 py-1.5 text-left transition-colors',
+                        'hover:bg-bg-hover',
+                        currentResourceName === resource.name && 'bg-accent/10'
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm text-text-primary truncate">
+                          {getResourceDisplayName(resource)}
+                        </div>
+                        {resource.description && (
+                          <div className="text-xs text-text-muted truncate">
+                            {resolveI18nText(resource.description, translations)}
+                          </div>
+                        )}
+                      </div>
+                      {currentResourceName === resource.name && (
+                        <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* 资源错误提示 */}
-            {resourceError && (
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-red-500/10 text-red-500 text-xs">
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>{resourceError}</span>
-              </div>
-            )}
+            {/* 加载资源按钮 */}
+            <button
+              onClick={handleLoadResource}
+              disabled={isLoadingResource || isResourceLoaded || !currentResource}
+              className={clsx(
+                'flex items-center justify-center p-1.5 rounded-md transition-colors',
+                isLoadingResource || isResourceLoaded || !currentResource
+                  ? 'bg-accent/50 text-white/70 cursor-not-allowed'
+                  : 'bg-accent text-white hover:bg-accent-hover'
+              )}
+            >
+              {isLoadingResource ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isResourceLoaded ? (
+                <CheckCircle className="w-4 h-4" />
+              ) : (
+                <FolderOpen className="w-4 h-4" />
+              )}
+            </button>
           </div>
+
+          {/* 资源错误提示 */}
+          {resourceError && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-red-500/10 text-red-500 text-xs">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{resourceError}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

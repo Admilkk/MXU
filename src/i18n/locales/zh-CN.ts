@@ -133,6 +133,8 @@ export default {
     autoscroll: '自动滚动',
     noLogs: '暂无日志',
     copyAll: '复制全部',
+    expand: '展开上方面板',
+    collapse: '折叠上方面板',
   },
 
   // 添加任务面板

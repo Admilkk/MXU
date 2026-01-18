@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, Copy, ChevronDown } from 'lucide-react';
+import { Trash2, Copy, ChevronUp, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
+import { useAppStore } from '@/stores/appStore';
 
 interface LogEntry {
   id: string;
@@ -13,14 +14,14 @@ interface LogEntry {
 export function LogsPanel() {
   const { t } = useTranslation();
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [autoScroll, setAutoScroll] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const { sidePanelExpanded, toggleSidePanelExpanded } = useAppStore();
 
   useEffect(() => {
-    if (autoScroll && logsEndRef.current) {
+    if (logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [logs, autoScroll]);
+  }, [logs]);
 
   const handleClear = () => {
     setLogs([]);
@@ -54,18 +55,22 @@ export function LogsPanel() {
           {t('logs.title')}
         </span>
         <div className="flex items-center gap-1">
-          {/* 自动滚动 */}
+          {/* 展开/折叠上方面板 */}
           <button
-            onClick={() => setAutoScroll(!autoScroll)}
+            onClick={toggleSidePanelExpanded}
             className={clsx(
               'p-1.5 rounded-md transition-colors',
-              autoScroll
+              !sidePanelExpanded
                 ? 'text-accent bg-accent-light'
                 : 'text-text-secondary hover:bg-bg-hover'
             )}
-            title={t('logs.autoscroll')}
+            title={sidePanelExpanded ? t('logs.collapse') : t('logs.expand')}
           >
-            <ChevronDown className="w-4 h-4" />
+            {sidePanelExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
           {/* 复制全部 */}
           <button
