@@ -9,6 +9,7 @@ import {
   LogsPanel,
   SettingsPage,
   WelcomeDialog,
+  ConnectionPanel,
 } from '@/components';
 import { autoLoadInterface, loadConfig, loadConfigFromStorage, resolveI18nText } from '@/services';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
@@ -248,6 +249,9 @@ function App() {
 
         {/* 右侧信息面板 */}
         <div className="w-80 flex flex-col gap-3 p-3 bg-bg-primary overflow-y-auto">
+          {/* 连接设置（设备/资源选择） */}
+          <ConnectionPanel />
+
           {/* 实时截图 */}
           <ScreenshotPanel />
 

@@ -169,6 +169,11 @@ export default {
     defaultName: '多开 1',
   },
 
+  // 连接面板
+  connection: {
+    title: '连接设置',
+  },
+
   // 错误消息
   errors: {
     loadInterfaceFailed: '加载 interface.json 失败',

@@ -292,6 +292,93 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
     return t('controller.selectController');
   };
 
+  // 选择 ADB 设备并自动连接
+  const handleSelectAdbDevice = async (device: AdbDevice) => {
+    setSelectedAdbDevice(device);
+    setShowDropdown(false);
+    
+    // 自动连接
+    setIsConnecting(true);
+    setError(null);
+    
+    try {
+      const initialized = await ensureMaaInitialized();
+      if (!initialized) {
+        throw new Error('无法初始化 MaaFramework，请确保 MaaFramework 动态库在正确的位置');
+      }
+      
+      await maaService.createInstance(instanceId).catch(() => {});
+      
+      const config: ControllerConfig = {
+        type: 'Adb',
+        adb_path: device.adb_path,
+        address: device.address,
+        screencap_methods: device.screencap_methods,
+        input_methods: device.input_methods,
+        config: device.config,
+      };
+      
+      const agentPath = `${basePath}/MaaAgentBinary`;
+      await maaService.connectController(instanceId, config, agentPath);
+      setIsConnected(true);
+      onConnectionChange?.(true);
+    } catch (err) {
+      console.error('[DeviceSelector] Auto connect error:', err);
+      setError(err instanceof Error ? err.message : '连接失败');
+      setIsConnected(false);
+      onConnectionChange?.(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // 选择 Win32 窗口并自动连接
+  const handleSelectWindow = async (win: Win32Window) => {
+    setSelectedWindow(win);
+    setShowDropdown(false);
+    
+    // 自动连接
+    setIsConnecting(true);
+    setError(null);
+    
+    try {
+      const initialized = await ensureMaaInitialized();
+      if (!initialized) {
+        throw new Error('无法初始化 MaaFramework，请确保 MaaFramework 动态库在正确的位置');
+      }
+      
+      await maaService.createInstance(instanceId).catch(() => {});
+      
+      let config: ControllerConfig;
+      if (controllerType === 'Win32') {
+        config = {
+          type: 'Win32',
+          handle: win.handle,
+          screencap_method: parseWin32ScreencapMethod(controllerDef.win32?.screencap || ''),
+          mouse_method: parseWin32InputMethod(controllerDef.win32?.mouse || ''),
+          keyboard_method: parseWin32InputMethod(controllerDef.win32?.keyboard || ''),
+        };
+      } else {
+        config = {
+          type: 'Gamepad',
+          handle: win.handle,
+        };
+      }
+      
+      const agentPath = `${basePath}/MaaAgentBinary`;
+      await maaService.connectController(instanceId, config, agentPath);
+      setIsConnected(true);
+      onConnectionChange?.(true);
+    } catch (err) {
+      console.error('[DeviceSelector] Auto connect error:', err);
+      setError(err instanceof Error ? err.message : '连接失败');
+      setIsConnected(false);
+      onConnectionChange?.(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
   // 获取设备列表
   const getDeviceList = () => {
     if (controllerType === 'Adb') {
@@ -300,10 +387,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
         name: device.name,
         description: device.address,
         selected: selectedAdbDevice?.address === device.address,
-        onClick: () => {
-          setSelectedAdbDevice(device);
-          setShowDropdown(false);
-        },
+        onClick: () => handleSelectAdbDevice(device),
       }));
     }
     if (controllerType === 'Win32' || controllerType === 'Gamepad') {
@@ -312,10 +396,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
         name: window.window_name || '(无标题)',
         description: window.class_name,
         selected: selectedWindow?.handle === window.handle,
-        onClick: () => {
-          setSelectedWindow(window);
-          setShowDropdown(false);
-        },
+        onClick: () => handleSelectWindow(window),
       }));
     }
     return [];
@@ -402,125 +483,130 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
 
       {/* 设备选择下拉框 - 仅对需要搜索设备的控制器显示 */}
       {needsDeviceSearch && (
-        <div className="relative">
-          <button
-            onClick={() => setShowDropdown(!showDropdown)}
-            disabled={isConnecting || isConnected}
-            className={clsx(
-              'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors',
-              'bg-bg-tertiary border-border',
-              isConnected
-                ? 'opacity-60 cursor-not-allowed'
-                : 'hover:border-accent cursor-pointer'
-            )}
-          >
-            <span className={clsx(
-              'truncate',
-              (controllerType === 'Adb' ? selectedAdbDevice : selectedWindow)
-                ? 'text-text-primary'
-                : 'text-text-muted'
-            )}>
-              {getSelectedText()}
-            </span>
-            <ChevronDown className={clsx(
-              'w-4 h-4 text-text-muted transition-transform',
-              showDropdown && 'rotate-180'
-            )} />
-          </button>
-
-          {/* 下拉菜单 */}
-          {showDropdown && (
-            <div className="absolute z-50 w-full mt-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-              {deviceList.length > 0 ? (
-                deviceList.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={item.onClick}
-                    className={clsx(
-                      'w-full flex items-center justify-between px-3 py-2 text-left transition-colors',
-                      'hover:bg-bg-hover',
-                      item.selected && 'bg-accent/10'
-                    )}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm text-text-primary truncate">{item.name}</div>
-                      <div className="text-xs text-text-muted truncate">{item.description}</div>
-                    </div>
-                    {item.selected && <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />}
-                  </button>
-                ))
-              ) : (
-                <div className="px-3 py-4 text-center text-text-muted text-sm">
-                  {isSearching ? t('common.loading') : '点击刷新按钮搜索设备'}
-                </div>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              disabled={isConnecting || isConnected}
+              className={clsx(
+                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors',
+                'bg-bg-tertiary border-border',
+                isConnected
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'hover:border-accent cursor-pointer'
               )}
-            </div>
-          )}
-        </div>
-      )}
+            >
+              <span className={clsx(
+                'truncate',
+                (controllerType === 'Adb' ? selectedAdbDevice : selectedWindow)
+                  ? 'text-text-primary'
+                  : 'text-text-muted'
+              )}>
+                {getSelectedText()}
+              </span>
+              <ChevronDown className={clsx(
+                'w-4 h-4 text-text-muted transition-transform',
+                showDropdown && 'rotate-180'
+              )} />
+            </button>
 
-      {/* 操作按钮 */}
-      <div className="flex gap-2">
-        {/* 仅对需要搜索设备的控制器显示刷新按钮 */}
-        {needsDeviceSearch && (
+            {/* 下拉菜单 */}
+            {showDropdown && (
+              <div className="absolute z-50 w-full mt-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {deviceList.length > 0 ? (
+                  deviceList.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={item.onClick}
+                      className={clsx(
+                        'w-full flex items-center justify-between px-3 py-2 text-left transition-colors',
+                        'hover:bg-bg-hover',
+                        item.selected && 'bg-accent/10'
+                      )}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm text-text-primary truncate">{item.name}</div>
+                        <div className="text-xs text-text-muted truncate">{item.description}</div>
+                      </div>
+                      {item.selected && <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-4 text-center text-text-muted text-sm">
+                    {isSearching ? t('common.loading') : '点击刷新按钮搜索设备'}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 刷新按钮 */}
           <button
             onClick={handleSearch}
             disabled={isSearching || isConnecting || isConnected}
             className={clsx(
-              'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              'bg-bg-tertiary text-text-secondary',
+              'flex items-center justify-center p-2.5 rounded-lg border transition-colors',
+              'bg-bg-tertiary border-border',
               isSearching || isConnecting || isConnected
                 ? 'opacity-50 cursor-not-allowed'
-                : 'hover:bg-bg-hover'
+                : 'hover:bg-bg-hover hover:border-accent'
             )}
+            title={t('controller.refresh')}
           >
             {isSearching ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-text-secondary" />
             ) : (
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4 text-text-secondary" />
             )}
-            {isSearching ? t('common.loading') : t('controller.refresh')}
           </button>
-        )}
+        </div>
+      )}
 
-        {isConnected ? (
-          <button
-            onClick={handleDisconnect}
-            className={clsx(
-              'flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium',
-              'bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors',
-              needsDeviceSearch ? 'flex-1' : 'w-full'
-            )}
-          >
-            <WifiOff className="w-4 h-4" />
-            {t('controller.disconnect')}
-          </button>
-        ) : (
-          <button
-            onClick={handleConnect}
-            disabled={isConnecting || !canConnect()}
-            className={clsx(
-              'flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              isConnecting || !canConnect()
-                ? 'bg-accent/50 text-white/70 cursor-not-allowed'
-                : 'bg-accent text-white hover:bg-accent-hover',
-              needsDeviceSearch ? 'flex-1' : 'w-full'
-            )}
-          >
-            {isConnecting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {t('controller.connecting')}
-              </>
-            ) : (
-              <>
-                <Wifi className="w-4 h-4" />
-                {t('controller.connect')}
-              </>
-            )}
-          </button>
-        )}
-      </div>
+      {/* 操作按钮 */}
+      {/* 已连接时显示断开按钮 */}
+      {isConnected && (
+        <button
+          onClick={handleDisconnect}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
+        >
+          <WifiOff className="w-4 h-4" />
+          {t('controller.disconnect')}
+        </button>
+      )}
+
+      {/* PlayCover 需要手动连接按钮 */}
+      {controllerType === 'PlayCover' && !isConnected && (
+        <button
+          onClick={handleConnect}
+          disabled={isConnecting || !canConnect()}
+          className={clsx(
+            'w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+            isConnecting || !canConnect()
+              ? 'bg-accent/50 text-white/70 cursor-not-allowed'
+              : 'bg-accent text-white hover:bg-accent-hover'
+          )}
+        >
+          {isConnecting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t('controller.connecting')}
+            </>
+          ) : (
+            <>
+              <Wifi className="w-4 h-4" />
+              {t('controller.connect')}
+            </>
+          )}
+        </button>
+      )}
+
+      {/* 正在连接时显示状态（用于自动连接） */}
+      {needsDeviceSearch && isConnecting && !isConnected && (
+        <div className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-text-secondary">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          {t('controller.connecting')}
+        </div>
+      )}
 
       {/* 错误提示 */}
       {error && (

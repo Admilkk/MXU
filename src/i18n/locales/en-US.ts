@@ -169,6 +169,11 @@ export default {
     defaultName: 'Multi 1',
   },
 
+  // Connection panel
+  connection: {
+    title: 'Connection Settings',
+  },
+
   // Error messages
   errors: {
     loadInterfaceFailed: 'Failed to load interface.json',

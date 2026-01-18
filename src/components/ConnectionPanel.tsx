@@ -1,0 +1,752 @@
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  ChevronDown,
+  ChevronUp,
+  Smartphone,
+  Monitor,
+  Apple,
+  Gamepad2,
+  FolderOpen,
+  RefreshCw,
+  Loader2,
+  Check,
+  AlertCircle,
+  Wifi,
+  WifiOff,
+  CheckCircle,
+  Info,
+  Settings2,
+} from 'lucide-react';
+import clsx from 'clsx';
+import { maaService } from '@/services/maaService';
+import { useAppStore } from '@/stores/appStore';
+import { resolveI18nText } from '@/services/contentResolver';
+import type { AdbDevice, Win32Window, ControllerConfig } from '@/types/maa';
+import type { ControllerItem, ResourceItem } from '@/types/interface';
+import { parseWin32ScreencapMethod, parseWin32InputMethod } from '@/types/maa';
+
+export function ConnectionPanel() {
+  const { t } = useTranslation();
+  const {
+    projectInterface,
+    basePath,
+    language,
+    interfaceTranslations,
+    activeInstanceId,
+    cachedAdbDevices,
+    cachedWin32Windows,
+    setCachedAdbDevices,
+    setCachedWin32Windows,
+    selectedController,
+    selectedResource,
+    setSelectedController,
+    setSelectedResource,
+  } = useAppStore();
+
+  // 折叠状态
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  // 设备相关状态
+  const [isSearching, setIsSearching] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  const [selectedAdbDevice, setSelectedAdbDevice] = useState<AdbDevice | null>(null);
+  const [selectedWindow, setSelectedWindow] = useState<Win32Window | null>(null);
+  const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
+  const [playcoverAddress, setPlaycoverAddress] = useState('127.0.0.1:1717');
+
+  // 资源相关状态
+  const [isLoadingResource, setIsLoadingResource] = useState(false);
+  const [isResourceLoaded, setIsResourceLoaded] = useState(false);
+  const [resourceError, setResourceError] = useState<string | null>(null);
+  const [showResourceDropdown, setShowResourceDropdown] = useState(false);
+
+  const langKey = language === 'zh-CN' ? 'zh_cn' : 'en_us';
+  const translations = interfaceTranslations[langKey];
+
+  // 获取当前实例 ID
+  const instanceId = activeInstanceId || '';
+
+  // 获取控制器列表和当前选中的控制器
+  const controllers = projectInterface?.controller || [];
+  const currentControllerName = selectedController[instanceId] || controllers[0]?.name;
+  const currentController = controllers.find(c => c.name === currentControllerName) || controllers[0];
+  const controllerType = currentController?.type;
+
+  // 获取资源列表和当前选中的资源
+  const resources = projectInterface?.resource || [];
+  const currentResourceName = selectedResource[instanceId] || resources[0]?.name;
+  const currentResource = resources.find(r => r.name === currentResourceName) || resources[0];
+
+  // 当设备和资源都准备好时自动折叠
+  useEffect(() => {
+    if (isConnected && isResourceLoaded) {
+      setIsCollapsed(true);
+    }
+  }, [isConnected, isResourceLoaded]);
+
+  // 判断是否需要搜索设备（PlayCover 不需要搜索）
+  const needsDeviceSearch = controllerType === 'Adb' || controllerType === 'Win32' || controllerType === 'Gamepad';
+
+  // 初始化 MaaFramework
+  const ensureMaaInitialized = async () => {
+    try {
+      await maaService.getVersion();
+      return true;
+    } catch {
+      // 尝试初始化
+      const possibleLibPaths: string[] = [];
+      const isTauriEnv = typeof window !== 'undefined' && '__TAURI__' in window;
+      
+      if (isTauriEnv) {
+        try {
+          const { resourceDir, appDataDir } = await import('@tauri-apps/api/path');
+          try {
+            const resDir = await resourceDir();
+            possibleLibPaths.push(resDir, `${resDir}bin`);
+          } catch {}
+          try {
+            const dataDir = await appDataDir();
+            possibleLibPaths.push(dataDir);
+          } catch {}
+          possibleLibPaths.push('.', './bin');
+          if (basePath && !basePath.startsWith('/') && !basePath.startsWith('http')) {
+            possibleLibPaths.push(basePath, `${basePath}/bin`);
+          }
+        } catch {}
+      }
+      
+      if (possibleLibPaths.length === 0) {
+        possibleLibPaths.push('.', './bin');
+      }
+      
+      for (const libPath of possibleLibPaths) {
+        try {
+          await maaService.init(libPath);
+          return true;
+        } catch {}
+      }
+      return false;
+    }
+  };
+
+  // 搜索设备
+  const handleSearch = async () => {
+    if (!currentController) return;
+    
+    setIsSearching(true);
+    setDeviceError(null);
+
+    try {
+      const initialized = await ensureMaaInitialized();
+      if (!initialized) {
+        throw new Error(t('maa.initFailed'));
+      }
+      
+      if (controllerType === 'Adb') {
+        const devices = await maaService.findAdbDevices();
+        setCachedAdbDevices(devices);
+        if (devices.length === 1) setSelectedAdbDevice(devices[0]);
+        if (devices.length > 0) setShowDeviceDropdown(true);
+      } else if (controllerType === 'Win32' || controllerType === 'Gamepad') {
+        const classRegex = currentController.win32?.class_regex || currentController.gamepad?.class_regex;
+        const windowRegex = currentController.win32?.window_regex || currentController.gamepad?.window_regex;
+        const windows = await maaService.findWin32Windows(classRegex, windowRegex);
+        setCachedWin32Windows(windows);
+        if (windows.length === 1) setSelectedWindow(windows[0]);
+        if (windows.length > 0) setShowDeviceDropdown(true);
+      }
+    } catch (err) {
+      setDeviceError(err instanceof Error ? err.message : t('controller.connectionFailed'));
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // 连接设备
+  const handleConnect = async () => {
+    if (!currentController) return;
+    
+    setIsConnecting(true);
+    setDeviceError(null);
+
+    try {
+      const initialized = await ensureMaaInitialized();
+      if (!initialized) {
+        throw new Error(t('maa.initFailed'));
+      }
+
+      await maaService.createInstance(instanceId).catch(() => {});
+
+      let config: ControllerConfig;
+
+      if (controllerType === 'Adb' && selectedAdbDevice) {
+        config = {
+          type: 'Adb',
+          adb_path: selectedAdbDevice.adb_path,
+          address: selectedAdbDevice.address,
+          screencap_methods: selectedAdbDevice.screencap_methods,
+          input_methods: selectedAdbDevice.input_methods,
+          config: selectedAdbDevice.config,
+        };
+      } else if (controllerType === 'Win32' && selectedWindow) {
+        config = {
+          type: 'Win32',
+          handle: selectedWindow.handle,
+          screencap_method: parseWin32ScreencapMethod(currentController.win32?.screencap || ''),
+          mouse_method: parseWin32InputMethod(currentController.win32?.mouse || ''),
+          keyboard_method: parseWin32InputMethod(currentController.win32?.keyboard || ''),
+        };
+      } else if (controllerType === 'PlayCover') {
+        config = {
+          type: 'PlayCover',
+          address: playcoverAddress,
+        };
+      } else if (controllerType === 'Gamepad' && selectedWindow) {
+        config = {
+          type: 'Gamepad',
+          handle: selectedWindow.handle,
+        };
+      } else {
+        throw new Error(t('controller.selectDevice'));
+      }
+
+      const agentPath = `${basePath}/MaaAgentBinary`;
+      await maaService.connectController(instanceId, config, agentPath);
+      setIsConnected(true);
+    } catch (err) {
+      setDeviceError(err instanceof Error ? err.message : t('controller.connectionFailed'));
+      setIsConnected(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // 加载资源
+  const handleLoadResource = async () => {
+    if (!currentResource) {
+      setResourceError(t('resource.selectResource'));
+      return;
+    }
+
+    setIsLoadingResource(true);
+    setResourceError(null);
+
+    try {
+      await maaService.createInstance(instanceId).catch(() => {});
+      const resourcePaths = currentResource.path.map(p => `${basePath}/${p}`);
+      await maaService.loadResource(instanceId, resourcePaths);
+      setIsResourceLoaded(true);
+    } catch (err) {
+      setResourceError(err instanceof Error ? err.message : t('resource.loadFailed'));
+      setIsResourceLoaded(false);
+    } finally {
+      setIsLoadingResource(false);
+    }
+  };
+
+  // 获取控制器图标
+  const getControllerIcon = (type?: string) => {
+    switch (type) {
+      case 'Adb': return <Smartphone className="w-4 h-4" />;
+      case 'Win32': return <Monitor className="w-4 h-4" />;
+      case 'PlayCover': return <Apple className="w-4 h-4" />;
+      case 'Gamepad': return <Gamepad2 className="w-4 h-4" />;
+      default: return <Smartphone className="w-4 h-4" />;
+    }
+  };
+
+  // 获取选中设备的显示文本
+  const getSelectedDeviceText = () => {
+    if (controllerType === 'Adb' && selectedAdbDevice) {
+      return `${selectedAdbDevice.name} (${selectedAdbDevice.address})`;
+    }
+    if ((controllerType === 'Win32' || controllerType === 'Gamepad') && selectedWindow) {
+      return selectedWindow.window_name || selectedWindow.class_name;
+    }
+    return t('controller.selectDevice');
+  };
+
+  // 选择 ADB 设备并自动连接（如已连接会先断开旧连接）
+  const handleSelectAdbDevice = async (device: AdbDevice) => {
+    setSelectedAdbDevice(device);
+    setShowDeviceDropdown(false);
+    
+    // 自动连接
+    setIsConnecting(true);
+    setDeviceError(null);
+    
+    try {
+      // 先断开旧连接
+      if (isConnected) {
+        await maaService.destroyInstance(instanceId).catch(() => {});
+        setIsConnected(false);
+      }
+      
+      const initialized = await ensureMaaInitialized();
+      if (!initialized) {
+        throw new Error(t('maa.initFailed'));
+      }
+      
+      await maaService.createInstance(instanceId).catch(() => {});
+      
+      const config: ControllerConfig = {
+        type: 'Adb',
+        adb_path: device.adb_path,
+        address: device.address,
+        screencap_methods: device.screencap_methods,
+        input_methods: device.input_methods,
+        config: device.config,
+      };
+      
+      const agentPath = `${basePath}/MaaAgentBinary`;
+      await maaService.connectController(instanceId, config, agentPath);
+      setIsConnected(true);
+    } catch (err) {
+      setDeviceError(err instanceof Error ? err.message : t('controller.connectionFailed'));
+      setIsConnected(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // 选择 Win32 窗口并自动连接（如已连接会先断开旧连接）
+  const handleSelectWindow = async (win: Win32Window) => {
+    setSelectedWindow(win);
+    setShowDeviceDropdown(false);
+    
+    // 自动连接
+    setIsConnecting(true);
+    setDeviceError(null);
+    
+    try {
+      // 先断开旧连接
+      if (isConnected) {
+        await maaService.destroyInstance(instanceId).catch(() => {});
+        setIsConnected(false);
+      }
+      
+      const initialized = await ensureMaaInitialized();
+      if (!initialized) {
+        throw new Error(t('maa.initFailed'));
+      }
+      
+      await maaService.createInstance(instanceId).catch(() => {});
+      
+      let config: ControllerConfig;
+      if (controllerType === 'Win32') {
+        config = {
+          type: 'Win32',
+          handle: win.handle,
+          screencap_method: parseWin32ScreencapMethod(currentController?.win32?.screencap || ''),
+          mouse_method: parseWin32InputMethod(currentController?.win32?.mouse || ''),
+          keyboard_method: parseWin32InputMethod(currentController?.win32?.keyboard || ''),
+        };
+      } else {
+        config = {
+          type: 'Gamepad',
+          handle: win.handle,
+        };
+      }
+      
+      const agentPath = `${basePath}/MaaAgentBinary`;
+      await maaService.connectController(instanceId, config, agentPath);
+      setIsConnected(true);
+    } catch (err) {
+      setDeviceError(err instanceof Error ? err.message : t('controller.connectionFailed'));
+      setIsConnected(false);
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // 获取设备列表
+  const getDeviceList = () => {
+    if (controllerType === 'Adb') {
+      return cachedAdbDevices.map(device => ({
+        id: `${device.adb_path}:${device.address}`,
+        name: device.name,
+        description: device.address,
+        selected: selectedAdbDevice?.address === device.address,
+        onClick: () => handleSelectAdbDevice(device),
+      }));
+    }
+    if (controllerType === 'Win32' || controllerType === 'Gamepad') {
+      return cachedWin32Windows.map(window => ({
+        id: String(window.handle),
+        name: window.window_name || '(无标题)',
+        description: window.class_name,
+        selected: selectedWindow?.handle === window.handle,
+        onClick: () => handleSelectWindow(window),
+      }));
+    }
+    return [];
+  };
+
+  // 判断是否可以连接
+  const canConnect = () => {
+    if (controllerType === 'Adb') return !!selectedAdbDevice;
+    if (controllerType === 'Win32' || controllerType === 'Gamepad') return !!selectedWindow;
+    if (controllerType === 'PlayCover') return playcoverAddress.trim().length > 0;
+    return false;
+  };
+
+  // 获取资源显示名称
+  const getResourceDisplayName = (resource: ResourceItem) => {
+    return resolveI18nText(resource.label, translations) || resource.name;
+  };
+
+  // 获取控制器显示名称
+  const getControllerDisplayName = (controller: ControllerItem) => {
+    return resolveI18nText(controller.label, translations) || controller.name;
+  };
+
+  const deviceList = getDeviceList();
+
+  // 状态指示器
+  const StatusIndicator = () => (
+    <div className="flex items-center gap-2">
+      {isConnecting ? (
+        <span className="flex items-center gap-1 text-accent text-xs">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          {t('controller.connecting')}
+        </span>
+      ) : isConnected ? (
+        <span className="flex items-center gap-1 text-green-500 text-xs">
+          <Wifi className="w-3 h-3" />
+          {t('controller.connected')}
+        </span>
+      ) : (
+        <span className="flex items-center gap-1 text-text-muted text-xs">
+          <WifiOff className="w-3 h-3" />
+          {t('controller.disconnected')}
+        </span>
+      )}
+      {isResourceLoaded && (
+        <span className="flex items-center gap-1 text-green-500 text-xs">
+          <CheckCircle className="w-3 h-3" />
+          {t('resource.loaded')}
+        </span>
+      )}
+    </div>
+  );
+
+  if (!projectInterface || controllers.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-bg-secondary rounded-lg border border-border">
+      {/* 标题栏（可点击折叠） */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className={clsx(
+          'w-full flex items-center justify-between px-3 py-2 hover:bg-bg-hover transition-colors',
+          isCollapsed ? 'rounded-lg' : 'rounded-t-lg border-b border-border'
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <Settings2 className="w-4 h-4 text-text-secondary" />
+          <span className="text-sm font-medium text-text-primary">
+            {t('connection.title')}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusIndicator />
+          {isCollapsed ? (
+            <ChevronDown className="w-4 h-4 text-text-muted" />
+          ) : (
+            <ChevronUp className="w-4 h-4 text-text-muted" />
+          )}
+        </div>
+      </button>
+
+      {/* 可折叠内容 */}
+      {!isCollapsed && (
+        <div className="p-3 space-y-3">
+          {/* 控制器选择 */}
+          {controllers.length > 1 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-text-secondary">
+                {getControllerIcon(controllerType)}
+                <span>{t('controller.title')}</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {controllers.map(controller => (
+                  <button
+                    key={controller.name}
+                    onClick={async () => {
+                      // 切换控制器时先断开旧连接
+                      if (isConnected) {
+                        await maaService.destroyInstance(instanceId).catch(() => {});
+                      }
+                      setSelectedController(instanceId, controller.name);
+                      setIsConnected(false);
+                      setSelectedAdbDevice(null);
+                      setSelectedWindow(null);
+                    }}
+                    disabled={isConnecting}
+                    className={clsx(
+                      'px-2 py-1 text-xs rounded-md transition-colors',
+                      currentControllerName === controller.name
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                      isConnecting && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    {getControllerDisplayName(controller)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* PlayCover 地址输入 */}
+          {controllerType === 'PlayCover' && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <Info className="w-3 h-3" />
+                <span>{t('controller.playcoverHint')}</span>
+              </div>
+              <input
+                type="text"
+                value={playcoverAddress}
+                onChange={(e) => setPlaycoverAddress(e.target.value)}
+                placeholder="127.0.0.1:1717"
+                disabled={isConnected || isConnecting}
+                className={clsx(
+                  'w-full px-2.5 py-1.5 rounded-md border bg-bg-tertiary border-border text-sm',
+                  'text-text-primary placeholder:text-text-muted',
+                  'focus:outline-none focus:border-accent transition-colors',
+                  isConnected && 'opacity-60 cursor-not-allowed'
+                )}
+              />
+            </div>
+          )}
+
+          {/* 设备选择（Adb/Win32/Gamepad）- 下拉框和刷新按钮同一行 */}
+          {needsDeviceSearch && (
+            <div className="flex gap-2">
+              <div className="relative flex-1 min-w-0">
+                <button
+                  onClick={() => setShowDeviceDropdown(!showDeviceDropdown)}
+                  disabled={isConnecting}
+                  className={clsx(
+                    'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md border transition-colors text-sm',
+                    'bg-bg-tertiary border-border',
+                    isConnecting
+                      ? 'opacity-60 cursor-not-allowed'
+                      : 'hover:border-accent cursor-pointer'
+                  )}
+                >
+                  <span className={clsx(
+                    'truncate',
+                    (controllerType === 'Adb' ? selectedAdbDevice : selectedWindow)
+                      ? 'text-text-primary'
+                      : 'text-text-muted'
+                  )}>
+                    {getSelectedDeviceText()}
+                  </span>
+                  <ChevronDown className={clsx(
+                    'w-4 h-4 text-text-muted transition-transform flex-shrink-0',
+                    showDeviceDropdown && 'rotate-180'
+                  )} />
+                </button>
+
+                {/* 下拉菜单 - 向下展开 */}
+                {showDeviceDropdown && (
+                  <div className="absolute z-[100] w-full mt-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {deviceList.length > 0 ? (
+                      deviceList.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={item.onClick}
+                          className={clsx(
+                            'w-full flex items-center justify-between px-2.5 py-1.5 text-left transition-colors',
+                            'hover:bg-bg-hover',
+                            item.selected && 'bg-accent/10'
+                          )}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm text-text-primary truncate">{item.name}</div>
+                            <div className="text-xs text-text-muted truncate">{item.description}</div>
+                          </div>
+                          {item.selected && <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-3 text-center text-text-muted text-xs">
+                        {isSearching ? t('common.loading') : t('controller.noDevices')}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 刷新按钮 - 与加载资源按钮保持一致的尺寸 */}
+              <button
+                onClick={handleSearch}
+                disabled={isSearching || isConnecting}
+                className={clsx(
+                  'flex items-center justify-center px-3 py-1.5 rounded-md border transition-colors',
+                  'bg-bg-tertiary border-border',
+                  isSearching || isConnecting
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-bg-hover hover:border-accent'
+                )}
+                title={t('controller.refresh')}
+              >
+                {isSearching ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-text-secondary" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5 text-text-secondary" />
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* PlayCover 需要手动连接按钮 */}
+          {controllerType === 'PlayCover' && !isConnected && (
+            <button
+              onClick={handleConnect}
+              disabled={isConnecting || !canConnect()}
+              className={clsx(
+                'w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                isConnecting || !canConnect()
+                  ? 'bg-accent/50 text-white/70 cursor-not-allowed'
+                  : 'bg-accent text-white hover:bg-accent-hover'
+              )}
+            >
+              {isConnecting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  {t('controller.connecting')}
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-3.5 h-3.5" />
+                  {t('controller.connect')}
+                </>
+              )}
+            </button>
+          )}
+
+          {/* 设备错误提示 */}
+          {deviceError && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-red-500/10 text-red-500 text-xs">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>{deviceError}</span>
+            </div>
+          )}
+
+          {/* 分隔线 */}
+          <div className="border-t border-border" />
+
+          {/* 资源选择 */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-text-secondary">
+              <FolderOpen className="w-4 h-4" />
+              <span>{t('resource.title')}</span>
+            </div>
+
+            {/* 资源下拉框和加载按钮同一行 */}
+            <div className="flex gap-2">
+              {/* 资源下拉框 */}
+              <div className="relative flex-1 min-w-0">
+                <button
+                  onClick={() => setShowResourceDropdown(!showResourceDropdown)}
+                  disabled={isLoadingResource || isResourceLoaded}
+                  className={clsx(
+                    'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md border transition-colors text-sm',
+                    'bg-bg-tertiary border-border',
+                    isResourceLoaded
+                      ? 'opacity-60 cursor-not-allowed'
+                      : 'hover:border-accent cursor-pointer'
+                  )}
+                >
+                  <span className={clsx(
+                    'truncate',
+                    currentResource ? 'text-text-primary' : 'text-text-muted'
+                  )}>
+                    {currentResource
+                      ? getResourceDisplayName(currentResource)
+                      : t('resource.selectResource')}
+                  </span>
+                  <ChevronDown className={clsx(
+                    'w-4 h-4 text-text-muted transition-transform flex-shrink-0',
+                    showResourceDropdown && 'rotate-180'
+                  )} />
+                </button>
+
+                {/* 资源下拉菜单 - 向上展开避免遮挡 */}
+                {showResourceDropdown && (
+                  <div className="absolute z-[100] w-full bottom-full mb-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {resources.map(resource => (
+                      <button
+                        key={resource.name}
+                        onClick={() => {
+                          setSelectedResource(instanceId, resource.name);
+                          setShowResourceDropdown(false);
+                          setIsResourceLoaded(false);
+                        }}
+                        className={clsx(
+                          'w-full flex items-center justify-between px-2.5 py-1.5 text-left transition-colors',
+                          'hover:bg-bg-hover',
+                          currentResourceName === resource.name && 'bg-accent/10'
+                        )}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm text-text-primary truncate">
+                            {getResourceDisplayName(resource)}
+                          </div>
+                          {resource.description && (
+                            <div className="text-xs text-text-muted truncate">
+                              {resolveI18nText(resource.description, translations)}
+                            </div>
+                          )}
+                        </div>
+                        {currentResourceName === resource.name && (
+                          <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 加载资源按钮 */}
+              <button
+                onClick={handleLoadResource}
+                disabled={isLoadingResource || isResourceLoaded || !currentResource}
+                className={clsx(
+                  'flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap',
+                  isLoadingResource || isResourceLoaded || !currentResource
+                    ? 'bg-accent/50 text-white/70 cursor-not-allowed'
+                    : 'bg-accent text-white hover:bg-accent-hover'
+                )}
+              >
+                {isLoadingResource ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : isResourceLoaded ? (
+                  <CheckCircle className="w-3.5 h-3.5" />
+                ) : (
+                  <FolderOpen className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
+
+            {/* 资源错误提示 */}
+            {resourceError && (
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-red-500/10 text-red-500 text-xs">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{resourceError}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
