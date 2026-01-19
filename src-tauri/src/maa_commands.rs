@@ -757,6 +757,40 @@ pub fn maa_is_resource_loaded(state: State<MaaState>, instance_id: String) -> Re
     Ok(loaded)
 }
 
+/// 销毁资源（用于切换资源时重新创建）
+#[tauri::command]
+pub fn maa_destroy_resource(state: State<MaaState>, instance_id: String) -> Result<(), String> {
+    info!("maa_destroy_resource called, instance_id: {}", instance_id);
+
+    let guard = MAA_LIBRARY.lock().map_err(|e| e.to_string())?;
+    let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
+
+    let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
+    let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+
+    // 销毁旧的资源
+    if let Some(resource) = instance.resource.take() {
+        debug!("Destroying old resource...");
+        unsafe {
+            (lib.maa_resource_destroy)(resource);
+        }
+    }
+
+    // 重置资源加载状态
+    instance.resource_loaded = false;
+
+    // 如果有 tasker，也需要销毁（因为 tasker 绑定了旧的 resource）
+    if let Some(tasker) = instance.tasker.take() {
+        debug!("Destroying old tasker (bound to old resource)...");
+        unsafe {
+            (lib.maa_tasker_destroy)(tasker);
+        }
+    }
+
+    info!("maa_destroy_resource success, instance_id: {}", instance_id);
+    Ok(())
+}
+
 /// 运行任务（异步，通过回调通知完成状态）
 /// 返回任务 ID，前端通过监听 maa-callback 事件获取完成状态
 #[tauri::command]

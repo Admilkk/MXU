@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ChevronDown,
@@ -7,7 +7,6 @@ import {
   Monitor,
   Apple,
   Gamepad2,
-  FolderOpen,
   RefreshCw,
   Loader2,
   Check,
@@ -16,6 +15,7 @@ import {
   WifiOff,
   CheckCircle,
   Settings2,
+  History,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { maaService } from '@/services/maaService';
@@ -77,12 +77,72 @@ export function ConnectionPanel() {
   const [resourceError, setResourceError] = useState<string | null>(null);
   const [showResourceDropdown, setShowResourceDropdown] = useState(false);
   
+  // 记录已加载的资源名称，避免重复加载
+  const lastLoadedResourceRef = useRef<string | null>(null);
+  
   // 等待中的操作 ID（用于回调匹配）
   const [pendingCtrlId, setPendingCtrlId] = useState<number | null>(null);
   const [pendingResIds, setPendingResIds] = useState<Set<number>>(new Set());
+  
+  // 下拉框触发按钮和菜单的 ref
+  const deviceDropdownRef = useRef<HTMLButtonElement>(null);
+  const deviceMenuRef = useRef<HTMLDivElement>(null);
+  const resourceDropdownRef = useRef<HTMLButtonElement>(null);
+  const resourceMenuRef = useRef<HTMLDivElement>(null);
+  const [deviceDropdownPos, setDeviceDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [resourceDropdownPos, setResourceDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  
+  // 计算下拉框位置（向下展开）
+  const calcDropdownPosition = useCallback((ref: React.RefObject<HTMLButtonElement | null>) => {
+    if (!ref.current) return null;
+    const rect = ref.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    };
+  }, []);
+  
+  // 计算下拉框位置（向上展开）
+  const calcDropdownPositionUp = useCallback((ref: React.RefObject<HTMLButtonElement | null>) => {
+    if (!ref.current) return null;
+    const rect = ref.current.getBoundingClientRect();
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+    };
+  }, []);
 
   const langKey = language === 'zh-CN' ? 'zh_cn' : 'en_us';
   const translations = interfaceTranslations[langKey];
+  
+  // 点击外部关闭下拉框
+  useEffect(() => {
+    if (!showDeviceDropdown && !showResourceDropdown) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // 检查点击是否在触发按钮或下拉菜单内部
+      if (showDeviceDropdown) {
+        const inButton = deviceDropdownRef.current?.contains(target);
+        const inMenu = deviceMenuRef.current?.contains(target);
+        if (!inButton && !inMenu) {
+          setShowDeviceDropdown(false);
+        }
+      }
+      if (showResourceDropdown) {
+        const inButton = resourceDropdownRef.current?.contains(target);
+        const inMenu = resourceMenuRef.current?.contains(target);
+        if (!inButton && !inMenu) {
+          setShowResourceDropdown(false);
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDeviceDropdown, showResourceDropdown]);
 
   // 获取当前实例 ID
   const instanceId = activeInstanceId || '';
@@ -200,6 +260,7 @@ export function ConnectionPanel() {
           setInstanceResourceLoaded(instanceId, false);
           setIsLoadingResource(false);
           setPendingResIds(new Set());
+          lastLoadedResourceRef.current = null;
         }
       }
     }).then(fn => {
@@ -359,23 +420,21 @@ export function ConnectionPanel() {
   };
 
   // 加载资源
-  const handleLoadResource = async () => {
-    if (!currentResource) {
-      setResourceError(t('resource.selectResource'));
-      return;
-    }
-
+  const loadResourceInternal = async (resource: ResourceItem) => {
     setIsLoadingResource(true);
     setResourceError(null);
 
     try {
       await maaService.createInstance(instanceId).catch(() => {});
       // 拼接绝对路径，移除相对路径前缀 "./" 或 "."
-      const resourcePaths = currentResource.path.map(p => {
+      const resourcePaths = resource.path.map(p => {
         const cleanPath = p.replace(/^\.\//, '').replace(/^\.\\/, '');
         return `${basePath}/${cleanPath}`;
       });
       const resIds = await maaService.loadResource(instanceId, resourcePaths);
+      
+      // 记录已加载的资源名称
+      lastLoadedResourceRef.current = resource.name;
       
       // 记录等待中的 res_ids，后续由回调处理完成状态
       setPendingResIds(new Set(resIds));
@@ -384,6 +443,57 @@ export function ConnectionPanel() {
       setIsResourceLoaded(false);
       setInstanceResourceLoaded(instanceId, false);
       setIsLoadingResource(false);
+      lastLoadedResourceRef.current = null;
+    }
+  };
+  
+  // 切换资源：销毁旧资源后加载新资源
+  const switchResource = async (newResource: ResourceItem) => {
+    setIsLoadingResource(true);
+    setResourceError(null);
+    setIsResourceLoaded(false);
+    setInstanceResourceLoaded(instanceId, false);
+
+    try {
+      // 销毁旧的资源
+      await maaService.destroyResource(instanceId);
+      
+      // 加载新资源
+      await loadResourceInternal(newResource);
+    } catch (err) {
+      setResourceError(err instanceof Error ? err.message : t('resource.switchFailed'));
+      setIsLoadingResource(false);
+      lastLoadedResourceRef.current = null;
+    }
+  };
+  
+  // 处理资源选择（自动加载）
+  const handleResourceSelect = async (resource: ResourceItem) => {
+    setShowResourceDropdown(false);
+    
+    // 检查是否正在运行任务
+    const isRunning = activeInstance?.isRunning || false;
+    if (isRunning) {
+      // 任务运行中不允许切换资源
+      setResourceError(t('resource.cannotSwitchWhileRunning'));
+      return;
+    }
+    
+    // 如果选择的是同一个资源且已加载，不做任何操作
+    if (resource.name === lastLoadedResourceRef.current && isResourceLoaded) {
+      setSelectedResource(instanceId, resource.name);
+      return;
+    }
+    
+    // 更新选中状态
+    setSelectedResource(instanceId, resource.name);
+    
+    // 如果之前已加载过资源，需要先销毁再加载
+    if (lastLoadedResourceRef.current !== null) {
+      await switchResource(resource);
+    } else {
+      // 首次加载
+      await loadResourceInternal(resource);
     }
   };
 
@@ -400,11 +510,25 @@ export function ConnectionPanel() {
 
   // 获取选中设备的显示文本
   const getSelectedDeviceText = () => {
-    if (controllerType === 'Adb' && selectedAdbDevice) {
-      return `${selectedAdbDevice.name} (${selectedAdbDevice.address})`;
+    const savedDevice = activeInstance?.savedDevice;
+    
+    if (controllerType === 'Adb') {
+      if (selectedAdbDevice) {
+        return `${selectedAdbDevice.name} (${selectedAdbDevice.address})`;
+      }
+      // 缓存为空但有历史设备名称
+      if (savedDevice?.adbDeviceName) {
+        return savedDevice.adbDeviceName;
+      }
     }
-    if ((controllerType === 'Win32' || controllerType === 'Gamepad') && selectedWindow) {
-      return selectedWindow.window_name || selectedWindow.class_name;
+    if (controllerType === 'Win32' || controllerType === 'Gamepad') {
+      if (selectedWindow) {
+        return selectedWindow.window_name || selectedWindow.class_name;
+      }
+      // 缓存为空但有历史窗口名称
+      if (savedDevice?.windowName) {
+        return savedDevice.windowName;
+      }
     }
     return t('controller.selectDevice');
   };
@@ -512,25 +636,131 @@ export function ConnectionPanel() {
     }
   };
 
+  // 点击历史设备条目时，触发搜索并自动匹配连接
+  const handleSearchAndConnectHistorical = async () => {
+    if (!currentController) return;
+    
+    setIsSearching(true);
+    setDeviceError(null);
+    setShowDeviceDropdown(false);
+
+    try {
+      const initialized = await ensureMaaInitialized();
+      if (!initialized) {
+        throw new Error(t('maa.initFailed'));
+      }
+      
+      const savedDevice = activeInstance?.savedDevice;
+      
+      if (controllerType === 'Adb') {
+        const devices = await maaService.findAdbDevices();
+        setCachedAdbDevices(devices);
+        
+        // 尝试匹配保存的设备名称
+        if (savedDevice?.adbDeviceName) {
+          const matched = devices.find(d => d.name === savedDevice.adbDeviceName);
+          if (matched) {
+            // 找到匹配的，自动连接
+            setIsSearching(false);
+            handleSelectAdbDevice(matched);
+            return;
+          }
+          // 没找到匹配的，显示错误提示
+          setDeviceError(t('controller.savedDeviceNotFound'));
+        }
+        
+        // 显示搜索结果供用户选择
+        if (devices.length > 0) {
+          setShowDeviceDropdown(true);
+        }
+      } else if (controllerType === 'Win32' || controllerType === 'Gamepad') {
+        const classRegex = currentController.win32?.class_regex || currentController.gamepad?.class_regex;
+        const windowRegex = currentController.win32?.window_regex || currentController.gamepad?.window_regex;
+        const windows = await maaService.findWin32Windows(classRegex, windowRegex);
+        setCachedWin32Windows(windows);
+        
+        // 尝试匹配保存的窗口名称
+        if (savedDevice?.windowName) {
+          const matched = windows.find(w => w.window_name === savedDevice.windowName);
+          if (matched) {
+            // 找到匹配的，自动连接
+            setIsSearching(false);
+            handleSelectWindow(matched);
+            return;
+          }
+          // 没找到匹配的，显示错误提示
+          setDeviceError(t('controller.savedDeviceNotFound'));
+        }
+        
+        // 显示搜索结果供用户选择
+        if (windows.length > 0) {
+          setShowDeviceDropdown(true);
+        }
+      }
+    } catch (err) {
+      setDeviceError(err instanceof Error ? err.message : t('controller.connectionFailed'));
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   // 获取设备列表
   const getDeviceList = () => {
+    const savedDevice = activeInstance?.savedDevice;
+    
     if (controllerType === 'Adb') {
-      return cachedAdbDevices.map(device => ({
-        id: `${device.adb_path}:${device.address}`,
-        name: device.name,
-        description: device.address,
-        selected: selectedAdbDevice?.address === device.address,
-        onClick: () => handleSelectAdbDevice(device),
-      }));
+      // 如果缓存中有设备，使用缓存列表
+      if (cachedAdbDevices.length > 0) {
+        return cachedAdbDevices.map(device => ({
+          id: `${device.adb_path}:${device.address}`,
+          name: device.name,
+          description: device.address,
+          selected: selectedAdbDevice?.address === device.address,
+          onClick: () => handleSelectAdbDevice(device),
+          isHistorical: false,
+        }));
+      }
+      
+      // 缓存为空但有历史设备名称，显示历史设备条目
+      if (savedDevice?.adbDeviceName) {
+        return [{
+          id: 'historical-device',
+          name: savedDevice.adbDeviceName,
+          description: t('controller.lastSelected'),
+          selected: true,
+          onClick: handleSearchAndConnectHistorical,
+          isHistorical: true,
+        }];
+      }
+      
+      return [];
     }
     if (controllerType === 'Win32' || controllerType === 'Gamepad') {
-      return cachedWin32Windows.map(window => ({
-        id: String(window.handle),
-        name: window.window_name || '(无标题)',
-        description: window.class_name,
-        selected: selectedWindow?.handle === window.handle,
-        onClick: () => handleSelectWindow(window),
-      }));
+      // 如果缓存中有窗口，使用缓存列表
+      if (cachedWin32Windows.length > 0) {
+        return cachedWin32Windows.map(window => ({
+          id: String(window.handle),
+          name: window.window_name || '(无标题)',
+          description: window.class_name,
+          selected: selectedWindow?.handle === window.handle,
+          onClick: () => handleSelectWindow(window),
+          isHistorical: false,
+        }));
+      }
+      
+      // 缓存为空但有历史窗口名称，显示历史窗口条目
+      if (savedDevice?.windowName) {
+        return [{
+          id: 'historical-window',
+          name: savedDevice.windowName,
+          description: t('controller.lastSelected'),
+          selected: true,
+          onClick: handleSearchAndConnectHistorical,
+          isHistorical: true,
+        }];
+      }
+      
+      return [];
     }
     return [];
   };
@@ -556,32 +786,54 @@ export function ConnectionPanel() {
   const deviceList = getDeviceList();
 
   // 状态指示器
-  const StatusIndicator = () => (
-    <div className="flex items-center gap-2">
-      {isConnecting ? (
-        <span className="flex items-center gap-1 text-accent text-xs">
-          <Loader2 className="w-3 h-3 animate-spin" />
-          {t('controller.connecting')}
-        </span>
-      ) : isConnected ? (
-        <span className="flex items-center gap-1 text-green-500 text-xs">
-          <Wifi className="w-3 h-3" />
-          {t('controller.connected')}
-        </span>
-      ) : (
-        <span className="flex items-center gap-1 text-text-muted text-xs">
-          <WifiOff className="w-3 h-3" />
-          {t('controller.disconnected')}
-        </span>
-      )}
-      {isResourceLoaded && (
-        <span className="flex items-center gap-1 text-green-500 text-xs">
-          <CheckCircle className="w-3 h-3" />
-          {t('resource.loaded')}
-        </span>
-      )}
-    </div>
-  );
+  const StatusIndicator = () => {
+    // 获取控制器显示文本
+    const getControllerStatusText = () => {
+      if (currentController) {
+        return getControllerDisplayName(currentController);
+      }
+      return t('controller.disconnected');
+    };
+    
+    // 判断是否有历史设备记录
+    const hasHistoricalDevice = activeInstance?.savedDevice && (
+      activeInstance.savedDevice.adbDeviceName ||
+      activeInstance.savedDevice.windowName ||
+      activeInstance.savedDevice.playcoverAddress
+    );
+    
+    return (
+      <div className="flex items-center gap-2">
+        {isConnecting ? (
+          <span className="flex items-center gap-1 text-accent text-xs">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            {t('controller.connecting')}
+          </span>
+        ) : isConnected ? (
+          <span className="flex items-center gap-1 text-green-500 text-xs">
+            <Wifi className="w-3 h-3" />
+            {getControllerStatusText()}
+          </span>
+        ) : hasHistoricalDevice && currentController ? (
+          <span className="flex items-center gap-1 text-text-muted text-xs">
+            <WifiOff className="w-3 h-3" />
+            {getControllerDisplayName(currentController)}
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-text-muted text-xs">
+            <WifiOff className="w-3 h-3" />
+            {t('controller.disconnected')}
+          </span>
+        )}
+        {isResourceLoaded && currentResource && (
+          <span className="flex items-center gap-1 text-green-500 text-xs">
+            <CheckCircle className="w-3 h-3" />
+            {getResourceDisplayName(currentResource)}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   if (!projectInterface || controllers.length === 0) {
     return null;
@@ -699,7 +951,13 @@ export function ConnectionPanel() {
             <div className="flex gap-2">
               <div className="relative flex-1 min-w-0">
                 <button
-                  onClick={() => setShowDeviceDropdown(!showDeviceDropdown)}
+                  ref={deviceDropdownRef}
+                  onClick={() => {
+                    if (!showDeviceDropdown) {
+                      setDeviceDropdownPos(calcDropdownPosition(deviceDropdownRef));
+                    }
+                    setShowDeviceDropdown(!showDeviceDropdown);
+                  }}
                   disabled={isConnecting}
                   className={clsx(
                     'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md border transition-colors text-sm',
@@ -723,9 +981,17 @@ export function ConnectionPanel() {
                   )} />
                 </button>
 
-                {/* 下拉菜单 - 向下展开 */}
-                {showDeviceDropdown && (
-                  <div className="absolute z-[100] w-full mt-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {/* 下拉菜单 - 使用 fixed 定位避免被父容器裁剪 */}
+                {showDeviceDropdown && deviceDropdownPos && (
+                  <div
+                    ref={deviceMenuRef}
+                    className="fixed z-[100] bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                    style={{
+                      top: deviceDropdownPos.top,
+                      left: deviceDropdownPos.left,
+                      width: deviceDropdownPos.width,
+                    }}
+                  >
                     {deviceList.length > 0 ? (
                       deviceList.map(item => (
                         <button
@@ -734,14 +1000,23 @@ export function ConnectionPanel() {
                           className={clsx(
                             'w-full flex items-center justify-between px-2.5 py-1.5 text-left transition-colors',
                             'hover:bg-bg-hover',
-                            item.selected && 'bg-accent/10'
+                            item.selected && !item.isHistorical && 'bg-accent/10',
+                            item.isHistorical && 'bg-amber-500/10'
                           )}
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm text-text-primary truncate">{item.name}</div>
-                            <div className="text-xs text-text-muted truncate">{item.description}</div>
+                          <div className="min-w-0 flex-1 flex items-center gap-2">
+                            {item.isHistorical && (
+                              <History className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm text-text-primary truncate">{item.name}</div>
+                              <div className={clsx(
+                                'text-xs truncate',
+                                item.isHistorical ? 'text-amber-500' : 'text-text-muted'
+                              )}>{item.description}</div>
+                            </div>
                           </div>
-                          {item.selected && <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />}
+                          {item.selected && !item.isHistorical && <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />}
                         </button>
                       ))
                     ) : (
@@ -786,21 +1061,28 @@ export function ConnectionPanel() {
           {/* 分隔线 */}
           <div className="border-t border-border" />
 
-          {/* 资源选择 - 下拉框和加载按钮，与设备选择对齐 */}
-          <div className="flex gap-2">
+          {/* 资源选择 - 选中即自动加载 */}
+          <div className="relative">
             {/* 资源下拉框 */}
-            <div className="relative flex-1 min-w-0">
-              <button
-                onClick={() => setShowResourceDropdown(!showResourceDropdown)}
-                disabled={isLoadingResource || isResourceLoaded}
-                className={clsx(
-                  'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md border transition-colors text-sm',
-                  'bg-bg-tertiary border-border',
-                  isResourceLoaded
-                    ? 'opacity-60 cursor-not-allowed'
-                    : 'hover:border-accent cursor-pointer'
-                )}
-              >
+            <button
+              ref={resourceDropdownRef}
+              onClick={() => {
+                if (isLoadingResource || activeInstance?.isRunning) return;
+                if (!showResourceDropdown) {
+                  setResourceDropdownPos(calcDropdownPositionUp(resourceDropdownRef));
+                }
+                setShowResourceDropdown(!showResourceDropdown);
+              }}
+              disabled={isLoadingResource || (activeInstance?.isRunning || false)}
+              className={clsx(
+                'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md border transition-colors text-sm',
+                'bg-bg-tertiary border-border',
+                (isLoadingResource || activeInstance?.isRunning)
+                  ? 'opacity-60 cursor-not-allowed'
+                  : 'hover:border-accent cursor-pointer'
+              )}
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
                 <span className={clsx(
                   'truncate',
                   currentResource ? 'text-text-primary' : 'text-text-muted'
@@ -809,71 +1091,57 @@ export function ConnectionPanel() {
                     ? getResourceDisplayName(currentResource)
                     : t('resource.selectResource')}
                 </span>
-                <ChevronDown className={clsx(
-                  'w-4 h-4 text-text-muted transition-transform flex-shrink-0',
-                  showResourceDropdown && 'rotate-180'
-                )} />
-              </button>
-
-              {/* 资源下拉菜单 - 向上展开避免遮挡 */}
-              {showResourceDropdown && (
-                <div className="absolute z-[100] w-full bottom-full mb-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {resources.map(resource => (
-                    <button
-                      key={resource.name}
-                      onClick={() => {
-                        setSelectedResource(instanceId, resource.name);
-                        setShowResourceDropdown(false);
-                        setIsResourceLoaded(false);
-                        setInstanceResourceLoaded(instanceId, false);
-                      }}
-                      className={clsx(
-                        'w-full flex items-center justify-between px-2.5 py-1.5 text-left transition-colors',
-                        'hover:bg-bg-hover',
-                        currentResourceName === resource.name && 'bg-accent/10'
-                      )}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm text-text-primary truncate">
-                          {getResourceDisplayName(resource)}
-                        </div>
-                        {resource.description && (
-                          <div className="text-xs text-text-muted truncate">
-                            {resolveI18nText(resource.description, translations)}
-                          </div>
-                        )}
-                      </div>
-                      {currentResourceName === resource.name && (
-                        <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 加载资源按钮 - 与刷新按钮保持一致的尺寸 */}
-            <button
-              onClick={handleLoadResource}
-              disabled={isLoadingResource || isResourceLoaded || !currentResource}
-              className={clsx(
-                'flex items-center justify-center px-3 py-1.5 rounded-md border transition-colors',
-                isResourceLoaded
-                  ? 'bg-green-500/20 border-green-500/50 cursor-not-allowed'
-                  : isLoadingResource || !currentResource
-                  ? 'bg-bg-tertiary border-border opacity-50 cursor-not-allowed'
-                  : 'bg-accent border-accent text-white hover:bg-accent-hover'
-              )}
-              title={t('resource.load')}
-            >
-              {isLoadingResource ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-text-secondary" />
-              ) : isResourceLoaded ? (
-                <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-              ) : (
-                <FolderOpen className="w-3.5 h-3.5" />
-              )}
+                {isLoadingResource && (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-accent flex-shrink-0" />
+                )}
+                {!isLoadingResource && isResourceLoaded && (
+                  <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                )}
+              </div>
+              <ChevronDown className={clsx(
+                'w-4 h-4 text-text-muted transition-transform flex-shrink-0',
+                showResourceDropdown && 'rotate-180'
+              )} />
             </button>
+
+            {/* 资源下拉菜单 - 使用 fixed 定位向上展开 */}
+            {showResourceDropdown && resourceDropdownPos && (
+              <div
+                ref={resourceMenuRef}
+                className="fixed z-[100] bg-bg-secondary border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                style={{
+                  bottom: window.innerHeight - resourceDropdownPos.top + 4,
+                  left: resourceDropdownPos.left,
+                  width: resourceDropdownPos.width,
+                }}
+              >
+                {resources.map(resource => (
+                  <button
+                    key={resource.name}
+                    onClick={() => handleResourceSelect(resource)}
+                    className={clsx(
+                      'w-full flex items-center justify-between px-2.5 py-1.5 text-left transition-colors',
+                      'hover:bg-bg-hover',
+                      currentResourceName === resource.name && 'bg-accent/10'
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-text-primary truncate">
+                        {getResourceDisplayName(resource)}
+                      </div>
+                      {resource.description && (
+                        <div className="text-xs text-text-muted truncate">
+                          {resolveI18nText(resource.description, translations)}
+                        </div>
+                      )}
+                    </div>
+                    {currentResourceName === resource.name && (
+                      <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 资源错误提示 */}

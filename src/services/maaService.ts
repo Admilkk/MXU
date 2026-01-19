@@ -210,6 +210,17 @@ export const maaService = {
   },
 
   /**
+   * 销毁资源（用于切换资源时重新创建）
+   * @param instanceId 实例 ID
+   */
+  async destroyResource(instanceId: string): Promise<void> {
+    if (!isTauri()) return;
+    log.info('销毁资源, 实例:', instanceId);
+    await invoke('maa_destroy_resource', { instanceId });
+    log.info('销毁资源成功:', instanceId);
+  },
+
+  /**
    * 运行任务
    * @param instanceId 实例 ID
    * @param entry 任务入口

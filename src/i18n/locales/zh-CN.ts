@@ -110,6 +110,8 @@ export default {
     selectDevice: '请选择设备',
     noDevices: '未找到设备',
     playcoverHint: '输入 PlayCover 应用监听地址',
+    lastSelected: '上次选择 · 点击搜索',
+    savedDeviceNotFound: '未找到上次的设备，请检查连接或重新选择',
   },
 
   // 资源
@@ -120,6 +122,8 @@ export default {
     loaded: '资源已加载',
     loadFailed: '资源加载失败',
     loadResource: '加载资源',
+    switchFailed: '切换资源失败',
+    cannotSwitchWhileRunning: '任务运行中无法切换资源',
   },
 
   // MaaFramework

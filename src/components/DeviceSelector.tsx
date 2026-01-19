@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Smartphone,
@@ -55,6 +55,39 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
   
   // 等待中的操作 ID（用于回调匹配）
   const [pendingCtrlId, setPendingCtrlId] = useState<number | null>(null);
+  
+  // 下拉框触发按钮和菜单的 ref
+  const dropdownRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  
+  // 计算下拉框位置
+  const calcDropdownPosition = useCallback(() => {
+    if (!dropdownRef.current) return null;
+    const rect = dropdownRef.current.getBoundingClientRect();
+    return {
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    };
+  }, []);
+  
+  // 点击外部关闭下拉框
+  useEffect(() => {
+    if (!showDropdown) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inButton = dropdownRef.current?.contains(target);
+      const inMenu = menuRef.current?.contains(target);
+      if (!inButton && !inMenu) {
+        setShowDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDropdown]);
 
   const controllerType = controllerDef.type;
 
@@ -427,7 +460,14 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
         <div className="flex gap-2">
           <div className="relative flex-1">
             <button
-              onClick={() => setShowDropdown(!showDropdown)}
+              ref={dropdownRef}
+              onClick={() => {
+                if (isConnecting || isConnected) return;
+                if (!showDropdown) {
+                  setDropdownPos(calcDropdownPosition());
+                }
+                setShowDropdown(!showDropdown);
+              }}
               disabled={isConnecting || isConnected}
               className={clsx(
                 'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border transition-colors',
@@ -451,9 +491,17 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
               )} />
             </button>
 
-            {/* 下拉菜单 */}
-            {showDropdown && (
-              <div className="absolute z-50 w-full mt-1 bg-bg-secondary border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {/* 下拉菜单 - 使用 fixed 定位避免被父容器裁剪 */}
+            {showDropdown && dropdownPos && (
+              <div
+                ref={menuRef}
+                className="fixed z-[100] bg-bg-secondary border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                style={{
+                  top: dropdownPos.top,
+                  left: dropdownPos.left,
+                  width: dropdownPos.width,
+                }}
+              >
                 {deviceList.length > 0 ? (
                   deviceList.map(item => (
                     <button

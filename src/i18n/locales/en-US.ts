@@ -110,6 +110,8 @@ export default {
     selectDevice: 'Select a device',
     noDevices: 'No devices found',
     playcoverHint: 'Enter PlayCover app listen address',
+    lastSelected: 'Last selected · Click to search',
+    savedDeviceNotFound: 'Previous device not found, please check connection or select another',
   },
 
   // Resource
@@ -120,6 +122,8 @@ export default {
     loaded: 'Resource loaded',
     loadFailed: 'Failed to load resource',
     loadResource: 'Load Resource',
+    switchFailed: 'Failed to switch resource',
+    cannotSwitchWhileRunning: 'Cannot switch resource while tasks are running',
   },
 
   // MaaFramework
