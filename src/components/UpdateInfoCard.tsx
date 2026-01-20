@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, RefreshCw, PackageCheck } from 'lucide-react';
-import { useAppStore, type UpdateInfo, type DownloadProgress, type DownloadStatus } from '@/stores/appStore';
+import type { DownloadProgress, DownloadStatus } from '@/stores/appStore';
 import { simpleMarkdownToHtml } from '@/services/contentResolver';
 import clsx from 'clsx';
 

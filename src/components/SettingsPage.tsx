@@ -4,7 +4,6 @@ import {
   ArrowLeft, 
   Globe, 
   Palette, 
-  Github,
   Mail,
   FileText,
   Loader2,
@@ -85,7 +84,7 @@ export function SettingsPage() {
     iconPath: undefined,
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [debugLog, setDebugLog] = useState<string[]>([]);
+  const [, setDebugLog] = useState<string[]>([]);
   const [mxuVersion, setMxuVersion] = useState<string | null>(null);
   const [maafwVersion, setMaafwVersion] = useState<string | null>(null);
   const [showCdk, setShowCdk] = useState(false);
@@ -403,8 +402,6 @@ export function SettingsPage() {
     projectInterface?.name ||
     'MXU';
   const version = projectInterface?.version || '0.1.0';
-  const github = projectInterface?.github;
-
   // 渲染 Markdown 内容
   const renderMarkdown = (content: string) => {
     if (!content) return null;
