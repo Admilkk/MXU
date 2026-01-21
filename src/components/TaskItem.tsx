@@ -170,6 +170,9 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
   const instance = instances.find((i) => i.id === instanceId);
   const isInstanceRunning = instance?.isRunning || false;
 
+  // 紧凑模式：实例运行时，未启用的任务显示为紧凑样式
+  const isCompact = isInstanceRunning && !task.enabled;
+
   // 判断是否可以编辑选项（只有 pending 或 idle 状态的任务可以编辑）
   const canEditOptions = taskRunStatus === 'idle' || taskRunStatus === 'pending';
 
@@ -484,6 +487,42 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
         return 'bg-transparent';
     }
   };
+
+  // 紧凑模式：只显示最简化的任务项
+  if (isCompact) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        onContextMenu={handleContextMenu}
+        className={clsx(
+          'group bg-bg-secondary/50 rounded-lg border border-border/50 overflow-hidden',
+          'transition-all duration-200',
+          isDragging && 'shadow-lg opacity-50',
+        )}
+      >
+        <div className="flex items-center gap-2 px-3 py-1.5">
+          {/* 复选框 - 紧凑模式下禁用 */}
+          <label className="flex items-center cursor-not-allowed opacity-40">
+            <input
+              type="checkbox"
+              checked={false}
+              disabled
+              className="w-3.5 h-3.5 rounded border-border-strong accent-accent cursor-not-allowed"
+            />
+          </label>
+
+          {/* 任务名称 - 紧凑显示 */}
+          <span className="text-xs text-text-muted/70 truncate">{displayName}</span>
+        </div>
+
+        {/* 右键菜单 */}
+        {menuState.isOpen && (
+          <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
