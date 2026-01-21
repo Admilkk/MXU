@@ -84,6 +84,15 @@ pub fn run() {
             // 存储 AppHandle 供 MaaFramework 回调使用（发送事件到前端）
             maa_ffi::set_app_handle(app.handle().clone());
 
+            // Windows/Linux 下移除系统标题栏（使用自定义标题栏）
+            // macOS 保留原生红绿灯按钮（titleBarStyle: overlay 已在配置中设置）
+            #[cfg(not(target_os = "macos"))]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_decorations(false);
+                }
+            }
+
             // 启动时异步清理 cache/old 目录（更新残留的旧文件），不阻塞应用启动
             if let Ok(exe_dir) = maa_commands::get_exe_dir() {
                 let old_dir = std::path::Path::new(&exe_dir).join("cache").join("old");

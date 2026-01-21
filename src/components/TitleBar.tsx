@@ -1,26 +1,50 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Minus, Square, X, Copy } from 'lucide-react';
+import { Minus, Square, X, Copy, Box } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { getInterfaceLangKey } from '@/i18n';
-import clsx from 'clsx';
+import { loadIconAsDataUrl } from '@/services/contentResolver';
 
 // 检测是否在 Tauri 环境中
 const isTauri = () => {
   return typeof window !== 'undefined' && '__TAURI__' in window;
 };
 
+// 平台类型
+type Platform = 'windows' | 'macos' | 'linux' | 'unknown';
+
 export function TitleBar() {
   const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
+  const [platform, setPlatform] = useState<Platform>('unknown');
+  const [iconUrl, setIconUrl] = useState<string | undefined>(undefined);
 
-  const { projectInterface, interfaceTranslations, language, resolveI18nText } = useAppStore();
+  const { projectInterface, language, resolveI18nText, basePath, interfaceTranslations } =
+    useAppStore();
 
   const langKey = getInterfaceLangKey(language);
+  const translations = interfaceTranslations[langKey];
 
-  // 监听窗口最大化状态变化
+  // 检测平台（通过 userAgent）
   useEffect(() => {
-    if (!isTauri()) return;
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes('win')) setPlatform('windows');
+    else if (ua.includes('mac')) setPlatform('macos');
+    else if (ua.includes('linux')) setPlatform('linux');
+  }, []);
+
+  // 异步加载图标（Tauri 环境下需要转换为 data URL）
+  useEffect(() => {
+    if (!projectInterface?.icon) {
+      setIconUrl(undefined);
+      return;
+    }
+    loadIconAsDataUrl(projectInterface.icon, basePath, translations).then(setIconUrl);
+  }, [projectInterface?.icon, basePath, translations]);
+
+  // 监听窗口最大化状态变化（仅非 macOS）
+  useEffect(() => {
+    if (!isTauri() || platform === 'macos') return;
 
     let unlisten: (() => void) | null = null;
 
@@ -46,7 +70,7 @@ export function TitleBar() {
     return () => {
       if (unlisten) unlisten();
     };
-  }, []);
+  }, [platform]);
 
   const handleMinimize = async () => {
     if (!isTauri()) return;
@@ -82,8 +106,6 @@ export function TitleBar() {
   const getWindowTitle = () => {
     if (!projectInterface) return 'MXU';
 
-    const translations = interfaceTranslations[langKey];
-
     // 优先使用 title 字段（支持国际化），否则使用 name + version
     if (projectInterface.title) {
       return resolveI18nText(projectInterface.title, langKey);
@@ -93,27 +115,28 @@ export function TitleBar() {
     return version ? `${projectInterface.name} ${version}` : projectInterface.name;
   };
 
+  // macOS 使用原生红绿灯，需要在左侧预留空间
+  const isMacOS = platform === 'macos';
+
   return (
     <div
       data-tauri-drag-region
       className="h-8 flex items-center justify-between bg-bg-secondary border-b border-border select-none shrink-0"
     >
-      {/* 左侧：窗口图标和标题 */}
+      {/* 左侧：macOS 红绿灯占位 + 窗口图标和标题 */}
       <div className="flex items-center h-full" data-tauri-drag-region>
+        {/* macOS 红绿灯按钮占位区域（约 70px） */}
+        {isMacOS && <div className="w-[70px] shrink-0" data-tauri-drag-region />}
+
         {/* 窗口图标 */}
-        {projectInterface?.icon && (
-          <div className="w-8 h-8 flex items-center justify-center">
-            <img
-              src={`${useAppStore.getState().basePath}/${resolveI18nText(projectInterface.icon, langKey)}`}
-              alt="icon"
-              className="w-4 h-4"
-              onError={(e) => {
-                // 图标加载失败时隐藏
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          </div>
-        )}
+        <div className="w-8 h-8 flex items-center justify-center">
+          {iconUrl ? (
+            <img src={iconUrl} alt="icon" className="w-4 h-4" />
+          ) : (
+            // 默认图标（无 icon 配置或加载中）
+            <Box className="w-4 h-4 text-text-secondary" />
+          )}
+        </div>
         <span
           className="text-xs text-text-secondary px-2 truncate max-w-[200px]"
           data-tauri-drag-region
@@ -122,8 +145,8 @@ export function TitleBar() {
         </span>
       </div>
 
-      {/* 右侧：窗口控制按钮 */}
-      {isTauri() && (
+      {/* 右侧：窗口控制按钮（仅 Windows/Linux 显示，macOS 使用原生红绿灯） */}
+      {isTauri() && !isMacOS && (
         <div className="flex h-full">
           <button
             onClick={handleMinimize}
