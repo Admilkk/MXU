@@ -239,6 +239,9 @@ export default {
     interfaceVersion: '{{name}} 版本',
     maafwVersion: 'maafw 版本',
     mxuVersion: 'mxu 版本',
+    environment: '运行环境',
+    envTauri: 'Tauri 桌面端',
+    envBrowser: '浏览器',
     refreshUI: '刷新 UI',
     resetWindowSize: '重置窗口尺寸',
     openConfigDir: '打开配置目录',
@@ -299,6 +302,7 @@ export default {
     channelBeta: '公测版',
     cdk: 'Mirror酱 CDK',
     cdkPlaceholder: '输入您的 CDK（可选）',
+    serviceName: 'Mirror酱',
     cdkHintAfterLink: ' 是独立的第三方加速下载服务，需要付费使用，并非「{{projectName}}」收费。其运营成本由订阅收入支撑，部分收益将回馈项目开发者。欢迎订阅 CDK 享受高速下载，同时支持项目持续开发。未填写 CDK 时将自动通过 GitHub 下载，若失败请尝试配置网络代理。',
     getCdk: '没有CDK？立即订阅',
     cdkHint: '请检查您的 CDK 是否正确或已过期',
@@ -391,6 +395,8 @@ export default {
     hint: '定时策略将在设定时间自动开始任务',
     executingPolicy: '正在按照「{{name}}」定时执行',
     startedAt: '开始时间: {{time}}',
+    // 索引对应 Date.getDay()：0=周日, 1=周一, ..., 6=周六
+    weekdays: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
   },
 
   // 错误消息

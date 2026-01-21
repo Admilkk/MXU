@@ -25,7 +25,7 @@ export interface LogEntry {
 }
 
 export type Theme = 'light' | 'dark';
-export type Language = 'zh-CN' | 'en-US';
+export type Language = 'zh-CN' | 'en-US' | 'ja-JP' | 'ko-KR';
 export type PageView = 'main' | 'settings';
 
 interface AppState {

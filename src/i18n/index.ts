@@ -2,27 +2,19 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import zhCN from './locales/zh-CN';
 import enUS from './locales/en-US';
+import jaJP from './locales/ja-JP';
+import koKR from './locales/ko-KR';
 
 /**
  * 支持的语言配置
  * - key: MXU 使用的语言代码（BCP 47 格式）
  * - interfaceKey: interface.json 翻译文件中使用的语言键（ProjectInterface V2 协议规范）
- * - weekdayLabels: 周几的本地化标签
  */
 export const SUPPORTED_LANGUAGES = {
-  'zh-CN': {
-    interfaceKey: 'zh_cn',
-    weekdayLabels: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
-  },
-  'en-US': {
-    interfaceKey: 'en_us',
-    weekdayLabels: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-  },
-  // 添加新语言示例：
-  // 'ja-JP': {
-  //   interfaceKey: 'ja_jp',
-  //   weekdayLabels: ['日', '月', '火', '水', '木', '金', '土'],
-  // },
+  'zh-CN': { interfaceKey: 'zh_cn' },
+  'en-US': { interfaceKey: 'en_us' },
+  'ja-JP': { interfaceKey: 'ja_jp' },
+  'ko-KR': { interfaceKey: 'ko_kr' },
 } as const;
 
 export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
@@ -34,12 +26,6 @@ export const getInterfaceLangKey = (lang: string): string => {
   return config?.interfaceKey ?? SUPPORTED_LANGUAGES['en-US'].interfaceKey;
 };
 
-/** 获取周几标签 */
-export const getWeekdayLabels = (lang: string): readonly string[] => {
-  const config = SUPPORTED_LANGUAGES[lang as SupportedLanguage];
-  return config?.weekdayLabels ?? SUPPORTED_LANGUAGES['en-US'].weekdayLabels;
-};
-
 /** 获取所有支持的语言列表 */
 export const getSupportedLanguages = (): SupportedLanguage[] => {
   return Object.keys(SUPPORTED_LANGUAGES) as SupportedLanguage[];
@@ -48,6 +34,8 @@ export const getSupportedLanguages = (): SupportedLanguage[] => {
 const resources = {
   'zh-CN': { translation: zhCN },
   'en-US': { translation: enUS },
+  'ja-JP': { translation: jaJP },
+  'ko-KR': { translation: koKR },
 };
 
 // 获取系统语言或存储的语言偏好

@@ -239,6 +239,9 @@ export default {
     interfaceVersion: '{{name}} version',
     maafwVersion: 'maafw version',
     mxuVersion: 'mxu version',
+    environment: 'Environment',
+    envTauri: 'Tauri Desktop',
+    envBrowser: 'Browser',
     refreshUI: 'Refresh UI',
     resetWindowSize: 'Reset Window Size',
     openConfigDir: 'Open Config Dir',
@@ -299,6 +302,7 @@ export default {
     channelBeta: 'Beta',
     cdk: 'MirrorChyan CDK',
     cdkPlaceholder: 'Enter your CDK (optional)',
+    serviceName: 'MirrorChyan',
     cdkHintAfterLink: ' is an independent third-party accelerated download service that requires a paid subscription, not a fee charged by "{{projectName}}". Its operating costs are covered by subscription revenue, with a portion supporting project developers. Subscribe for high-speed downloads while supporting ongoing development. Without a CDK, downloads will fall back to GitHub. If that fails, please configure a network proxy.',
     getCdk: 'No CDKey? Subscribe Now',
     cdkHint: 'Please check if your CDK is correct or has expired',
@@ -391,6 +395,8 @@ export default {
     hint: 'Scheduled tasks will run automatically at set times',
     executingPolicy: 'Running scheduled "{{name}}"',
     startedAt: 'Started at: {{time}}',
+    // Index corresponds to Date.getDay(): 0=Sun, 1=Mon, ..., 6=Sat
+    weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   },
 
   // Error messages

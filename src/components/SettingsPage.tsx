@@ -292,7 +292,7 @@ export function SettingsPage() {
     loadContent();
   }, [projectInterface, langKey, basePath, translations]);
 
-  const handleLanguageChange = (lang: 'zh-CN' | 'en-US') => {
+  const handleLanguageChange = (lang: 'zh-CN' | 'en-US' | 'ja-JP' | 'ko-KR') => {
     setLanguage(lang);
     setI18nLanguage(lang);
   };
@@ -564,28 +564,50 @@ export function SettingsPage() {
                 <Globe className="w-5 h-5 text-accent" />
                 <span className="font-medium text-text-primary">{t('settings.language')}</span>
               </div>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleLanguageChange('zh-CN')}
                   className={clsx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
                     language === 'zh-CN'
                       ? 'bg-accent text-white'
                       : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
                   )}
                 >
-                  中文
+                  简体中文
                 </button>
                 <button
                   onClick={() => handleLanguageChange('en-US')}
                   className={clsx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
                     language === 'en-US'
                       ? 'bg-accent text-white'
                       : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
                   )}
                 >
                   English
+                </button>
+                <button
+                  onClick={() => handleLanguageChange('ja-JP')}
+                  className={clsx(
+                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    language === 'ja-JP'
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
+                  )}
+                >
+                  日本語
+                </button>
+                <button
+                  onClick={() => handleLanguageChange('ko-KR')}
+                  className={clsx(
+                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                    language === 'ko-KR'
+                      ? 'bg-accent text-white'
+                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
+                  )}
+                >
+                  한국어
                 </button>
               </div>
             </div>
