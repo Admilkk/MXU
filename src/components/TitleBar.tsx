@@ -42,9 +42,9 @@ export function TitleBar() {
     loadIconAsDataUrl(projectInterface.icon, basePath, translations).then(setIconUrl);
   }, [projectInterface?.icon, basePath, translations]);
 
-  // 监听窗口最大化状态变化（仅非 macOS）
+  // 监听窗口最大化状态变化（仅 Windows，用于切换最大化/还原按钮图标）
   useEffect(() => {
-    if (!isTauri() || platform === 'macos') return;
+    if (!isTauri() || platform !== 'windows') return;
 
     let unlisten: (() => void) | null = null;
 
@@ -115,19 +115,19 @@ export function TitleBar() {
     return version ? `${projectInterface.name} ${version}` : projectInterface.name;
   };
 
-  // macOS 使用原生红绿灯，需要在左侧预留空间
-  const isMacOS = platform === 'macos';
+  // macOS/Linux 使用原生标题栏，不渲染自定义标题栏
+  // 仅 Windows 使用自定义标题栏
+  if (platform === 'macos' || platform === 'linux') {
+    return null;
+  }
 
   return (
     <div
       data-tauri-drag-region
       className="h-8 flex items-center justify-between bg-bg-secondary border-b border-border select-none shrink-0"
     >
-      {/* 左侧：macOS 红绿灯占位 + 窗口图标和标题 */}
+      {/* 左侧：窗口图标和标题 */}
       <div className="flex items-center h-full" data-tauri-drag-region>
-        {/* macOS 红绿灯按钮占位区域（约 70px） */}
-        {isMacOS && <div className="w-[70px] shrink-0" data-tauri-drag-region />}
-
         {/* 窗口图标 */}
         <div className="w-8 h-8 flex items-center justify-center">
           {iconUrl ? (
@@ -145,8 +145,8 @@ export function TitleBar() {
         </span>
       </div>
 
-      {/* 右侧：窗口控制按钮（仅 Windows/Linux 显示，macOS 使用原生红绿灯） */}
-      {isTauri() && !isMacOS && (
+      {/* 右侧：窗口控制按钮（仅 Windows/Linux 显示） */}
+      {isTauri() && (
         <div className="flex h-full">
           <button
             onClick={handleMinimize}

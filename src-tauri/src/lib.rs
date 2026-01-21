@@ -84,9 +84,9 @@ pub fn run() {
             // 存储 AppHandle 供 MaaFramework 回调使用（发送事件到前端）
             maa_ffi::set_app_handle(app.handle().clone());
 
-            // Windows/Linux 下移除系统标题栏（使用自定义标题栏）
-            // macOS 保留原生红绿灯按钮（titleBarStyle: overlay 已在配置中设置）
-            #[cfg(not(target_os = "macos"))]
+            // Windows 下移除系统标题栏（使用自定义标题栏）
+            // macOS/Linux 保留完整的原生标题栏
+            #[cfg(target_os = "windows")]
             {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.set_decorations(false);
