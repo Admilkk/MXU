@@ -145,13 +145,13 @@ export type OptionDefinition = SelectOption | SwitchOption | InputOption;
 export interface SelectedTask {
   id: string;
   taskName: string;
-  customName?: string;        // 用户自定义名称
+  customName?: string; // 用户自定义名称
   enabled: boolean;
   optionValues: Record<string, OptionValue>;
   expanded: boolean;
 }
 
-export type OptionValue = 
+export type OptionValue =
   | { type: 'select'; caseName: string }
   | { type: 'switch'; value: boolean }
   | { type: 'input'; values: Record<string, string> };
@@ -166,10 +166,10 @@ export interface SavedDeviceInfo {
 // 定时执行策略
 export interface SchedulePolicy {
   id: string;
-  name: string;             // 策略名称
-  enabled: boolean;         // 是否启用
-  weekdays: number[];       // 重复日期 (0-6, 0=周日)
-  hours: number[];          // 开始时间 (0-23)
+  name: string; // 策略名称
+  enabled: boolean; // 是否启用
+  weekdays: number[]; // 重复日期 (0-6, 0=周日)
+  hours: number[]; // 开始时间 (0-23)
 }
 
 // 多开实例状态

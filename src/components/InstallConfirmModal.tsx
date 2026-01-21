@@ -1,14 +1,27 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Download, RefreshCw, CheckCircle, AlertCircle, Loader2, PartyPopper } from 'lucide-react';
+import {
+  X,
+  Download,
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  PartyPopper,
+} from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
-import { installUpdate, restartApp, saveUpdateCompleteInfo, clearPendingUpdateInfo } from '@/services/updateService';
+import {
+  installUpdate,
+  restartApp,
+  saveUpdateCompleteInfo,
+  clearPendingUpdateInfo,
+} from '@/services/updateService';
 import { ReleaseNotes, DownloadProgressBar } from './UpdateInfoCard';
 
 export function InstallConfirmModal() {
   const { t } = useTranslation();
   const [installStage, setInstallStage] = useState<string>('');
-  
+
   const {
     updateInfo,
     projectInterface,
@@ -28,18 +41,18 @@ export function InstallConfirmModal() {
   } = useAppStore();
 
   const currentVersion = projectInterface?.version || '';
-  
+
   // 判断是否为"刚更新完成"模式
   const isJustUpdatedMode = !!justUpdatedInfo;
 
   // 开始安装
   const handleInstall = useCallback(async () => {
     if (!downloadSavePath || !basePath) return;
-    
+
     setInstallStatus('installing');
     setInstallError(null);
     setInstallStage('');
-    
+
     try {
       const success = await installUpdate({
         zipPath: downloadSavePath,
@@ -54,7 +67,7 @@ export function InstallConfirmModal() {
           }
         },
       });
-      
+
       if (success) {
         setInstallStatus('completed');
       } else {
@@ -100,7 +113,13 @@ export function InstallConfirmModal() {
     if (justUpdatedInfo) {
       setJustUpdatedInfo(null);
     }
-  }, [installStatus, setShowInstallConfirmModal, resetInstallState, justUpdatedInfo, setJustUpdatedInfo]);
+  }, [
+    installStatus,
+    setShowInstallConfirmModal,
+    resetInstallState,
+    justUpdatedInfo,
+    setJustUpdatedInfo,
+  ]);
 
   // 用于追踪是否已触发自动安装，避免重复执行
   const autoInstallTriggered = useRef(false);
@@ -109,7 +128,11 @@ export function InstallConfirmModal() {
 
   // 当模态框打开且 installStatus 为 'installing' 时自动开始安装
   useEffect(() => {
-    if (showInstallConfirmModal && installStatus === 'installing' && !autoInstallTriggered.current) {
+    if (
+      showInstallConfirmModal &&
+      installStatus === 'installing' &&
+      !autoInstallTriggered.current
+    ) {
       autoInstallTriggered.current = true;
       // 实际执行安装逻辑
       (async () => {
@@ -118,10 +141,10 @@ export function InstallConfirmModal() {
           setInstallError('下载路径无效');
           return;
         }
-        
+
         setInstallError(null);
         setInstallStage('');
-        
+
         try {
           const success = await installUpdate({
             zipPath: downloadSavePath,
@@ -136,7 +159,7 @@ export function InstallConfirmModal() {
               }
             },
           });
-          
+
           if (success) {
             setInstallStatus('completed');
           } else {
@@ -150,13 +173,21 @@ export function InstallConfirmModal() {
         }
       })();
     }
-    
+
     // 重置标志当模态框关闭时
     if (!showInstallConfirmModal) {
       autoInstallTriggered.current = false;
       autoRestartTriggered.current = false;
     }
-  }, [showInstallConfirmModal, installStatus, downloadSavePath, basePath, setInstallStatus, setInstallError, t]);
+  }, [
+    showInstallConfirmModal,
+    installStatus,
+    downloadSavePath,
+    basePath,
+    setInstallStatus,
+    setInstallError,
+    t,
+  ]);
 
   // 安装完成后自动重启
   useEffect(() => {
@@ -168,7 +199,7 @@ export function InstallConfirmModal() {
 
   // 如果没有打开模态框，或者既没有更新信息也没有刚更新完成信息，则不渲染
   if (!showInstallConfirmModal || (!updateInfo && !justUpdatedInfo)) return null;
-  
+
   // 获取显示用的版本信息（优先使用刚更新完成信息）
   const displayVersionName = justUpdatedInfo?.newVersion || updateInfo?.versionName || '';
   const displayReleaseNote = justUpdatedInfo?.releaseNote || updateInfo?.releaseNote || '';
@@ -180,12 +211,13 @@ export function InstallConfirmModal() {
   const isInstalling = installStatus === 'installing';
   const isInstallComplete = installStatus === 'completed';
   const isInstallFailed = installStatus === 'failed';
-  
+
   // 判断是否需要显示更新日志（需要大尺寸模态框）
-  const showReleaseNotes = isJustUpdatedMode || (!isInstallComplete && !isInstallFailed && !isInstalling);
+  const showReleaseNotes =
+    isJustUpdatedMode || (!isInstallComplete && !isInstallFailed && !isInstalling);
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleClose}
     >
@@ -204,12 +236,13 @@ export function InstallConfirmModal() {
             <span className="text-sm font-medium text-text-primary">
               {isJustUpdatedMode
                 ? t('mirrorChyan.updateCompleteTitle')
-                : isInstallComplete 
+                : isInstallComplete
                   ? t('mirrorChyan.installComplete')
-                  : t('mirrorChyan.releaseNotes')
-              }
+                  : t('mirrorChyan.releaseNotes')}
             </span>
-            <span className="font-mono text-sm text-accent font-semibold">{displayVersionName}</span>
+            <span className="font-mono text-sm text-accent font-semibold">
+              {displayVersionName}
+            </span>
             {displayChannel && displayChannel !== 'stable' && (
               <span className="px-1.5 py-0.5 bg-warning/20 text-warning text-xs rounded font-medium">
                 {displayChannel}
@@ -237,7 +270,7 @@ export function InstallConfirmModal() {
                   {t('mirrorChyan.updateCompleteMessage')}
                 </p>
               </div>
-              
+
               <ReleaseNotes releaseNote={displayReleaseNote} fillHeight className="flex-1" />
             </div>
           )}
@@ -246,9 +279,7 @@ export function InstallConfirmModal() {
           {!isJustUpdatedMode && isInstallComplete && (
             <div className="flex flex-col items-center gap-4 py-4">
               <Loader2 className="w-12 h-12 text-accent animate-spin" />
-              <p className="text-sm text-text-primary font-medium">
-                {t('mirrorChyan.restarting')}
-              </p>
+              <p className="text-sm text-text-primary font-medium">{t('mirrorChyan.restarting')}</p>
             </div>
           )}
 
@@ -260,9 +291,7 @@ export function InstallConfirmModal() {
                 <p className="text-sm text-text-primary font-medium">
                   {t('mirrorChyan.installFailed')}
                 </p>
-                {installError && (
-                  <p className="text-xs text-error">{installError}</p>
-                )}
+                {installError && <p className="text-xs text-error">{installError}</p>}
               </div>
             </div>
           )}
@@ -275,32 +304,34 @@ export function InstallConfirmModal() {
                 <p className="text-sm text-text-primary font-medium">
                   {t('mirrorChyan.installing')}
                 </p>
-                {installStage && (
-                  <p className="text-xs text-text-muted">{installStage}</p>
-                )}
+                {installStage && <p className="text-xs text-text-muted">{installStage}</p>}
               </div>
             </div>
           )}
 
           {/* 常规状态 - 显示更新日志 */}
-          {!isJustUpdatedMode && !isInstallComplete && !isInstallFailed && !isInstalling && updateInfo && (
-            <div className="flex-1 flex flex-col min-h-0">
-              <ReleaseNotes releaseNote={updateInfo.releaseNote} fillHeight className="flex-1" />
+          {!isJustUpdatedMode &&
+            !isInstallComplete &&
+            !isInstallFailed &&
+            !isInstalling &&
+            updateInfo && (
+              <div className="flex-1 flex flex-col min-h-0">
+                <ReleaseNotes releaseNote={updateInfo.releaseNote} fillHeight className="flex-1" />
 
-              {/* 下载进度 */}
-              {downloadStatus !== 'idle' && (
-                <div className="pt-2 mt-4 border-t border-border shrink-0">
-                  <DownloadProgressBar
-                    downloadStatus={downloadStatus}
-                    downloadProgress={downloadProgress}
-                    fileSize={updateInfo.fileSize}
-                    downloadSource={updateInfo.downloadSource}
-                    showActions={false}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+                {/* 下载进度 */}
+                {downloadStatus !== 'idle' && (
+                  <div className="pt-2 mt-4 border-t border-border shrink-0">
+                    <DownloadProgressBar
+                      downloadStatus={downloadStatus}
+                      downloadProgress={downloadProgress}
+                      fileSize={updateInfo.fileSize}
+                      downloadSource={updateInfo.downloadSource}
+                      showActions={false}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         {/* 底部按钮 */}
@@ -357,7 +388,6 @@ export function InstallConfirmModal() {
               {t('mirrorChyan.installing')}
             </button>
           )}
-
 
           {/* 安装失败，重试 */}
           {!isJustUpdatedMode && isInstallFailed && (

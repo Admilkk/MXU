@@ -13,8 +13,22 @@ import {
   DashboardView,
   InstallConfirmModal,
 } from '@/components';
-import { autoLoadInterface, loadConfig, loadConfigFromStorage, resolveI18nText, checkAndPrepareDownload, maaService } from '@/services';
-import { downloadUpdate, getUpdateSavePath, consumeUpdateCompleteInfo, savePendingUpdateInfo, getPendingUpdateInfo, clearPendingUpdateInfo } from '@/services/updateService';
+import {
+  autoLoadInterface,
+  loadConfig,
+  loadConfigFromStorage,
+  resolveI18nText,
+  checkAndPrepareDownload,
+  maaService,
+} from '@/services';
+import {
+  downloadUpdate,
+  getUpdateSavePath,
+  consumeUpdateCompleteInfo,
+  savePendingUpdateInfo,
+  getPendingUpdateInfo,
+  clearPendingUpdateInfo,
+} from '@/services/updateService';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { loggers } from '@/utils/logger';
@@ -105,7 +119,9 @@ async function getWindowSize(): Promise<{ width: number; height: number } | null
 function App() {
   const [loadingState, setLoadingState] = useState<LoadingState>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [versionWarning, setVersionWarning] = useState<{ current: string; minimum: string } | null>(null);
+  const [versionWarning, setVersionWarning] = useState<{ current: string; minimum: string } | null>(
+    null,
+  );
 
   const { t } = useTranslation();
 
@@ -195,60 +211,66 @@ function App() {
   const downloadStartedRef = useRef(false);
 
   // 自动下载函数
-  const startAutoDownload = useCallback(async (updateResult: NonNullable<Awaited<ReturnType<typeof checkAndPrepareDownload>>>, downloadBasePath: string) => {
-    if (!updateResult.downloadUrl || downloadStartedRef.current) return;
+  const startAutoDownload = useCallback(
+    async (
+      updateResult: NonNullable<Awaited<ReturnType<typeof checkAndPrepareDownload>>>,
+      downloadBasePath: string,
+    ) => {
+      if (!updateResult.downloadUrl || downloadStartedRef.current) return;
 
-    downloadStartedRef.current = true;
-    setDownloadStatus('downloading');
-    setDownloadProgress({
-      downloadedSize: 0,
-      totalSize: updateResult.fileSize || 0,
-      speed: 0,
-      progress: 0,
-    });
-
-    try {
-      const savePath = await getUpdateSavePath(downloadBasePath, updateResult.filename);
-      setDownloadSavePath(savePath);
-
-      const success = await downloadUpdate({
-        url: updateResult.downloadUrl,
-        savePath,
-        totalSize: updateResult.fileSize,
-        onProgress: (progress: DownloadProgress) => {
-          setDownloadProgress(progress);
-        },
+      downloadStartedRef.current = true;
+      setDownloadStatus('downloading');
+      setDownloadProgress({
+        downloadedSize: 0,
+        totalSize: updateResult.fileSize || 0,
+        speed: 0,
+        progress: 0,
       });
 
-      if (success) {
-        setDownloadStatus('completed');
-        log.info('更新下载完成');
+      try {
+        const savePath = await getUpdateSavePath(downloadBasePath, updateResult.filename);
+        setDownloadSavePath(savePath);
 
-        // 保存待安装更新信息，以便下次启动时自动安装
-        savePendingUpdateInfo({
-          versionName: updateResult.versionName,
-          releaseNote: updateResult.releaseNote,
-          channel: updateResult.channel,
-          downloadSavePath: savePath,
-          fileSize: updateResult.fileSize,
-          updateType: updateResult.updateType,
-          downloadSource: updateResult.downloadSource,
-          timestamp: Date.now(),
+        const success = await downloadUpdate({
+          url: updateResult.downloadUrl,
+          savePath,
+          totalSize: updateResult.fileSize,
+          onProgress: (progress: DownloadProgress) => {
+            setDownloadProgress(progress);
+          },
         });
-      } else {
+
+        if (success) {
+          setDownloadStatus('completed');
+          log.info('更新下载完成');
+
+          // 保存待安装更新信息，以便下次启动时自动安装
+          savePendingUpdateInfo({
+            versionName: updateResult.versionName,
+            releaseNote: updateResult.releaseNote,
+            channel: updateResult.channel,
+            downloadSavePath: savePath,
+            fileSize: updateResult.fileSize,
+            updateType: updateResult.updateType,
+            downloadSource: updateResult.downloadSource,
+            timestamp: Date.now(),
+          });
+        } else {
+          setDownloadStatus('failed');
+          log.warn('更新下载失败');
+        }
+      } catch (error) {
+        log.error('更新下载出错:', error);
         setDownloadStatus('failed');
-        log.warn('更新下载失败');
       }
-    } catch (error) {
-      log.error('更新下载出错:', error);
-      setDownloadStatus('failed');
-    }
-  }, [setDownloadStatus, setDownloadProgress, setDownloadSavePath]);
+    },
+    [setDownloadStatus, setDownloadProgress, setDownloadSavePath],
+  );
 
   // 设置窗口标题（根据 ProjectInterface V2 协议）
   useEffect(() => {
     if (!projectInterface) return;
-    
+
     const langKey = getInterfaceLangKey(language);
     const translations = interfaceTranslations[langKey];
 
@@ -268,7 +290,7 @@ function App() {
   // 设置窗口图标（根据 ProjectInterface V2 协议）
   useEffect(() => {
     if (!projectInterface?.icon || !isTauri()) return;
-    
+
     const langKey = getInterfaceLangKey(language);
     const translations = interfaceTranslations[langKey];
 
@@ -341,7 +363,7 @@ function App() {
       } catch (err) {
         log.warn('恢复后端状态失败:', err);
       }
-      
+
       // 检查 MaaFramework 版本兼容性
       // 注意：即使完整库加载失败（旧版本缺少某些函数），版本检查仍应工作
       try {
@@ -351,11 +373,16 @@ function App() {
         } catch (initErr) {
           log.warn('MaaFramework 初始化失败（可能是版本过低）:', initErr);
         }
-        
+
         // 版本检查使用独立的版本获取，不依赖完整库加载
         const versionCheck = await maaService.checkVersion();
         if (!versionCheck.is_compatible) {
-          log.warn('MaaFramework 版本过低:', versionCheck.current, '< 最低要求:', versionCheck.minimum);
+          log.warn(
+            'MaaFramework 版本过低:',
+            versionCheck.current,
+            '< 最低要求:',
+            versionCheck.minimum,
+          );
           setVersionWarning({
             current: versionCheck.current,
             minimum: versionCheck.minimum,
@@ -427,22 +454,24 @@ function App() {
           userAgent: 'MXU',
           githubUrl: result.interface.github,
           basePath: downloadBasePath,
-        }).then(updateResult => {
-          if (updateResult) {
-            setUpdateInfo(updateResult);
-            if (updateResult.hasUpdate) {
-              log.info(`发现新版本: ${updateResult.versionName}`);
-              // 强制弹出更新气泡
-              useAppStore.getState().setShowUpdateDialog(true);
-              // 有更新且有下载链接时自动开始下载
-              if (updateResult.downloadUrl) {
-                startAutoDownload(updateResult, downloadBasePath);
+        })
+          .then((updateResult) => {
+            if (updateResult) {
+              setUpdateInfo(updateResult);
+              if (updateResult.hasUpdate) {
+                log.info(`发现新版本: ${updateResult.versionName}`);
+                // 强制弹出更新气泡
+                useAppStore.getState().setShowUpdateDialog(true);
+                // 有更新且有下载链接时自动开始下载
+                if (updateResult.downloadUrl) {
+                  startAutoDownload(updateResult, downloadBasePath);
+                }
               }
             }
-          }
-        }).catch(err => {
-          log.warn('自动检查更新失败:', err);
-        });
+          })
+          .catch((err) => {
+            log.warn('自动检查更新失败:', err);
+          });
       }
     } catch (err) {
       log.error('加载 interface.json 失败:', err);
@@ -480,7 +509,13 @@ function App() {
         setShowUpdateDialog(true);
       }
     }
-  }, [currentPage, updateInfo?.hasUpdate, downloadStatus, setShowUpdateDialog, setShowInstallConfirmModal]);
+  }, [
+    currentPage,
+    updateInfo?.hasUpdate,
+    downloadStatus,
+    setShowUpdateDialog,
+    setShowInstallConfirmModal,
+  ]);
 
   // 下载完成时，强制弹出安装模态框
   useEffect(() => {
@@ -535,11 +570,7 @@ function App() {
     const handleContextMenu = (e: MouseEvent) => {
       // 允许输入框和文本区域的默认右键菜单
       const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable
-      ) {
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
       }
       e.preventDefault();
@@ -551,7 +582,7 @@ function App() {
 
   // 屏蔽浏览器默认快捷键
   const devMode = useAppStore((state) => state.devMode);
-  
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isCtrlOrMeta = e.ctrlKey || e.metaKey;
@@ -628,7 +659,7 @@ function App() {
   // 计算显示标题（根据 ProjectInterface V2 协议）
   const getDisplayTitle = () => {
     if (!projectInterface) return { title: 'MXU', subtitle: 'MaaFramework 下一代通用 GUI' };
-    
+
     const langKey = getInterfaceLangKey(language);
     const translations = interfaceTranslations[langKey];
 
@@ -701,11 +732,11 @@ function App() {
 
       {/* 安装确认模态框 */}
       <InstallConfirmModal />
-      
+
       {/* MaaFramework 版本警告弹窗 */}
       {versionWarning && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div 
+          <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => setVersionWarning(null)}
           />
@@ -718,14 +749,12 @@ function App() {
             </div>
             <div className="px-6 py-5 space-y-3">
               <p className="text-text-secondary">
-                {t('versionWarning.message', { 
-                  current: versionWarning.current, 
-                  minimum: versionWarning.minimum 
+                {t('versionWarning.message', {
+                  current: versionWarning.current,
+                  minimum: versionWarning.minimum,
                 })}
               </p>
-              <p className="text-text-secondary text-sm">
-                {t('versionWarning.suggestion')}
-              </p>
+              <p className="text-text-secondary text-sm">{t('versionWarning.suggestion')}</p>
             </div>
             <div className="flex justify-end px-6 py-4 border-t border-border">
               <button
@@ -763,8 +792,6 @@ function App() {
             />
           </div>
 
-
-
           {/* 分隔条 Resizer */}
           <div
             className={`${rightPanelCollapsed ? 'w-4' : 'w-1'} hover:bg-accent/50 cursor-col-resize flex items-center justify-center group shrink-0 transition-all select-none bg-transparent`}
@@ -797,9 +824,8 @@ function App() {
             </div>
           )}
         </div>
-      )
-      }
-    </div >
+      )}
+    </div>
   );
 }
 

@@ -44,7 +44,7 @@ const getInitialLanguage = (): SupportedLanguage => {
   if (stored && stored in SUPPORTED_LANGUAGES) {
     return stored as SupportedLanguage;
   }
-  
+
   // 尝试匹配系统语言
   const systemLang = navigator.language;
   // 精确匹配
@@ -53,20 +53,18 @@ const getInitialLanguage = (): SupportedLanguage => {
   }
   // 前缀匹配（如 zh -> zh-CN）
   const prefix = systemLang.split('-')[0];
-  const matched = getSupportedLanguages().find(lang => lang.startsWith(prefix));
+  const matched = getSupportedLanguages().find((lang) => lang.startsWith(prefix));
   return matched ?? 'en-US';
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: getInitialLanguage(),
-    fallbackLng: 'en-US',
-    interpolation: {
-      escapeValue: false,
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: getInitialLanguage(),
+  fallbackLng: 'en-US',
+  interpolation: {
+    escapeValue: false,
+  },
+});
 
 export const setLanguage = (lang: SupportedLanguage) => {
   i18n.changeLanguage(lang);

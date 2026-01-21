@@ -16,5 +16,11 @@ export { SchedulePanel } from './SchedulePanel';
 export { ContextMenu, useContextMenu, getIcon } from './ContextMenu';
 export type { MenuItem, ContextMenuState } from './ContextMenu';
 export { InstallConfirmModal } from './InstallConfirmModal';
-export { VersionInfo, ReleaseNotes, DownloadProgressBar, formatSize, formatSpeed } from './UpdateInfoCard';
+export {
+  VersionInfo,
+  ReleaseNotes,
+  DownloadProgressBar,
+  formatSize,
+  formatSpeed,
+} from './UpdateInfoCard';
 export { FrameRateSelector, getFrameInterval } from './FrameRateSelector';

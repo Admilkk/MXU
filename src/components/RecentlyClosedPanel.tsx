@@ -14,12 +14,12 @@ interface RecentlyClosedPanelProps {
 function formatRelativeTime(timestamp: number, t: (key: string) => string): string {
   const now = Date.now();
   const diff = now - timestamp;
-  
+
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
-  
+
   if (days > 0) {
     return t('recentlyClosed.daysAgo').replace('{{count}}', String(days));
   }
@@ -44,12 +44,12 @@ function formatTasksSummary(item: RecentlyClosedInstance, t: (key: string) => st
   if (taskCount === 0) {
     return t('recentlyClosed.noTasks');
   }
-  
+
   const firstTaskName = item.tasks[0].customName || item.tasks[0].taskName;
   if (taskCount === 1) {
     return firstTaskName;
   }
-  
+
   return t('recentlyClosed.tasksCount')
     .replace('{{first}}', firstTaskName)
     .replace('{{count}}', String(taskCount));
@@ -59,13 +59,9 @@ export function RecentlyClosedPanel({ onClose, anchorRef }: RecentlyClosedPanelP
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, right: 0 });
-  
-  const {
-    recentlyClosed,
-    reopenRecentlyClosed,
-    removeFromRecentlyClosed,
-    clearRecentlyClosed,
-  } = useAppStore();
+
+  const { recentlyClosed, reopenRecentlyClosed, removeFromRecentlyClosed, clearRecentlyClosed } =
+    useAppStore();
 
   // 计算面板位置
   useEffect(() => {
@@ -134,9 +130,7 @@ export function RecentlyClosedPanel({ onClose, anchorRef }: RecentlyClosedPanelP
       <div className="flex items-center justify-between px-4 py-3 bg-bg-tertiary border-b border-border">
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-text-secondary" />
-          <span className="text-sm font-medium text-text-primary">
-            {t('recentlyClosed.title')}
-          </span>
+          <span className="text-sm font-medium text-text-primary">{t('recentlyClosed.title')}</span>
           {recentlyClosed.length > 0 && (
             <span className="px-1.5 py-0.5 bg-bg-active text-text-muted text-xs rounded">
               {recentlyClosed.length}
@@ -153,10 +147,7 @@ export function RecentlyClosedPanel({ onClose, anchorRef }: RecentlyClosedPanelP
               <Trash2 className="w-4 h-4" />
             </button>
           )}
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md hover:bg-bg-hover transition-colors"
-          >
+          <button onClick={onClose} className="p-1 rounded-md hover:bg-bg-hover transition-colors">
             <X className="w-4 h-4 text-text-muted" />
           </button>
         </div>
@@ -177,12 +168,15 @@ export function RecentlyClosedPanel({ onClose, anchorRef }: RecentlyClosedPanelP
                 onClick={() => handleReopen(item.id)}
                 className={clsx(
                   'group px-4 py-2.5 cursor-pointer',
-                  'hover:bg-bg-hover transition-colors'
+                  'hover:bg-bg-hover transition-colors',
                 )}
               >
                 {/* 第一行：名称 + 操作按钮 */}
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 text-sm font-medium text-text-primary truncate" title={item.name}>
+                  <div
+                    className="flex-1 text-sm font-medium text-text-primary truncate"
+                    title={item.name}
+                  >
                     {item.name}
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -205,11 +199,14 @@ export function RecentlyClosedPanel({ onClose, anchorRef }: RecentlyClosedPanelP
                     </button>
                   </div>
                 </div>
-                
+
                 {/* 第二行：控制器 · 资源 · 任务 */}
                 <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
                   {item.controllerName && (
-                    <span className="flex items-center gap-1 shrink-0" title={t('controller.title')}>
+                    <span
+                      className="flex items-center gap-1 shrink-0"
+                      title={t('controller.title')}
+                    >
                       <Gamepad2 className="w-3 h-3" />
                       <span className="max-w-[80px] truncate">{item.controllerName}</span>
                     </span>
@@ -227,7 +224,10 @@ export function RecentlyClosedPanel({ onClose, anchorRef }: RecentlyClosedPanelP
                     <span className="text-text-muted/50">·</span>
                   )}
                   {item.tasks.length > 0 && (
-                    <span className="flex items-center gap-1 truncate" title={formatTasksSummary(item, t)}>
+                    <span
+                      className="flex items-center gap-1 truncate"
+                      title={formatTasksSummary(item, t)}
+                    >
                       <ListChecks className="w-3 h-3 shrink-0" />
                       <span className="truncate">{formatTasksSummary(item, t)}</span>
                     </span>

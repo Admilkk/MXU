@@ -34,52 +34,55 @@ export function ScreenshotPanel() {
     setScreenshotPanelExpanded,
     screenshotFrameRate,
   } = useAppStore();
-  
+
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const { state: menuState, show: showMenu, hide: hideMenu } = useContextMenu();
-  
+
   // 用于控制截图流的引用
   const streamingRef = useRef(false);
   const lastFrameTimeRef = useRef(0);
   const frameIntervalRef = useRef(getFrameInterval(screenshotFrameRate));
-  
+
   // 帧率配置变化时更新帧间隔
   useEffect(() => {
     frameIntervalRef.current = getFrameInterval(screenshotFrameRate);
   }, [screenshotFrameRate]);
-  
+
   const instanceId = activeInstanceId || '';
-  
+
   // 从 store 获取当前实例的截图流状态
   const isStreaming = instanceId ? (instanceScreenshotStreaming[instanceId] ?? false) : false;
-  
+
   // 更新截图流状态
-  const setIsStreaming = useCallback((streaming: boolean) => {
-    if (instanceId) {
-      setInstanceScreenshotStreaming(instanceId, streaming);
-    }
-  }, [instanceId, setInstanceScreenshotStreaming]);
+  const setIsStreaming = useCallback(
+    (streaming: boolean) => {
+      if (instanceId) {
+        setInstanceScreenshotStreaming(instanceId, streaming);
+      }
+    },
+    [instanceId, setInstanceScreenshotStreaming],
+  );
 
   // 获取单帧截图（任务未运行时使用）
   const captureFrame = useCallback(async (): Promise<string | null> => {
     if (!instanceId) return null;
-    
+
     try {
       // 发起截图请求
       const screencapId = await maaService.postScreencap(instanceId);
       if (screencapId < 0) {
         throw new Error('Failed to post screencap');
       }
-      
+
       // 等待截图完成
       const success = await maaService.waitForScreencap(screencapId, 10000);
       if (!success) {
         throw new Error('Screencap failed');
       }
-      
+
       // 获取缓存的图像
       const imageData = await maaService.getCachedImage(instanceId);
       return imageData || null;
@@ -92,7 +95,7 @@ export function ScreenshotPanel() {
   // 获取缓存截图（任务运行时直接获取）
   const getCachedFrame = useCallback(async (): Promise<string | null> => {
     if (!instanceId) return null;
-    
+
     try {
       const imageData = await maaService.getCachedImage(instanceId);
       return imageData || null;
@@ -122,11 +125,11 @@ export function ScreenshotPanel() {
         setIsFullscreen(false);
       }
     };
-    
+
     if (isFullscreen) {
       document.addEventListener('keydown', handleKeyDown);
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -136,24 +139,24 @@ export function ScreenshotPanel() {
   const streamLoop = useCallback(async () => {
     // 保存启动时的实例 ID，用于检查是否仍是活动实例
     const loopInstanceId = instanceId;
-    
+
     // 初始化下一帧时间
     let nextFrameTime = Date.now();
-    
+
     while (streamingRef.current) {
       // 检查当前实例是否仍是活动实例，避免非活动 tab 刷新截图
       const currentActiveId = useAppStore.getState().activeInstanceId;
       if (loopInstanceId !== currentActiveId) {
         break;
       }
-      
+
       // 计算需要等待的时间（sleep until 下一帧时间点）
       const now = Date.now();
       const sleepTime = nextFrameTime - now;
       if (sleepTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, sleepTime));
+        await new Promise((resolve) => setTimeout(resolve, sleepTime));
       }
-      
+
       // 计算下一帧时间（基于当前目标时间累加，避免截图耗时影响帧率）
       const frameInterval = frameIntervalRef.current;
       if (frameInterval > 0) {
@@ -166,15 +169,15 @@ export function ScreenshotPanel() {
         // unlimited 模式，立即执行下一帧
         nextFrameTime = Date.now();
       }
-      
+
       lastFrameTimeRef.current = Date.now();
-      
+
       try {
         // 检查任务是否正在运行
         const isRunning = await maaService.isRunning(loopInstanceId);
-        
+
         let imageData: string | null = null;
-        
+
         if (isRunning) {
           // 任务运行中，直接获取缓存的截图（任务会自动更新缓存）
           imageData = await getCachedFrame();
@@ -182,9 +185,13 @@ export function ScreenshotPanel() {
           // 任务未运行，需要主动发起截图
           imageData = await captureFrame();
         }
-        
+
         // 再次检查是否仍是活动实例，避免更新非活动 tab 的截图
-        if (imageData && streamingRef.current && loopInstanceId === useAppStore.getState().activeInstanceId) {
+        if (
+          imageData &&
+          streamingRef.current &&
+          loopInstanceId === useAppStore.getState().activeInstanceId
+        ) {
           setScreenshotUrl(imageData);
           setError(null);
         }
@@ -195,37 +202,49 @@ export function ScreenshotPanel() {
   }, [instanceId, captureFrame, getCachedFrame]);
 
   // 开始/停止截图流
-  const toggleStreaming = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    
-    if (!instanceId) return;
-    
-    if (isStreaming) {
-      // 停止流
-      streamingRef.current = false;
-      setIsStreaming(false);
-    } else {
-      // 开始流时，如果面板是折叠状态则自动展开
-      if (!screenshotPanelExpanded) {
-        setScreenshotPanelExpanded(true);
+  const toggleStreaming = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+
+      if (!instanceId) return;
+
+      if (isStreaming) {
+        // 停止流
+        streamingRef.current = false;
+        setIsStreaming(false);
+      } else {
+        // 开始流时，如果面板是折叠状态则自动展开
+        if (!screenshotPanelExpanded) {
+          setScreenshotPanelExpanded(true);
+        }
+        streamingRef.current = true;
+        setIsStreaming(true);
+        setError(null);
+        streamLoop();
       }
-      streamingRef.current = true;
-      setIsStreaming(true);
-      setError(null);
-      streamLoop();
-    }
-  }, [instanceId, isStreaming, setIsStreaming, streamLoop, screenshotPanelExpanded, setScreenshotPanelExpanded]);
+    },
+    [
+      instanceId,
+      isStreaming,
+      setIsStreaming,
+      streamLoop,
+      screenshotPanelExpanded,
+      setScreenshotPanelExpanded,
+    ],
+  );
 
   // 实例切换时重置截图和错误，但保留截图流状态
   useEffect(() => {
     // 清除截图，等待新实例的截图
     setScreenshotUrl(null);
     setError(null);
-    
+
     // 同步 streamingRef 与新实例的截图流状态
-    const newInstanceStreaming = instanceId ? (instanceScreenshotStreaming[instanceId] ?? false) : false;
+    const newInstanceStreaming = instanceId
+      ? (instanceScreenshotStreaming[instanceId] ?? false)
+      : false;
     streamingRef.current = newInstanceStreaming;
-    
+
     // 如果新实例的截图流是开启的，启动流循环
     if (newInstanceStreaming && instanceId) {
       streamLoop();
@@ -247,12 +266,12 @@ export function ScreenshotPanel() {
   const connectionStatus = instanceId ? instanceConnectionStatus[instanceId] : undefined;
   const prevConnectionStatusRef = useRef<typeof connectionStatus>(undefined);
   const hasAutoStartedRef = useRef(false);
-  
+
   // 组件挂载或状态恢复后，如果已连接且面板可见，自动启动截图流
   useEffect(() => {
     // 避免重复启动（仅在首次检测到已连接时启动）
     if (hasAutoStartedRef.current) return;
-    
+
     const isConnected = connectionStatus === 'Connected';
     if (isConnected && !isStreaming && screenshotPanelExpanded && sidePanelExpanded && instanceId) {
       hasAutoStartedRef.current = true;
@@ -261,8 +280,16 @@ export function ScreenshotPanel() {
       setError(null);
       streamLoop();
     }
-  }, [connectionStatus, instanceId, screenshotPanelExpanded, sidePanelExpanded, isStreaming, setIsStreaming, streamLoop]);
-  
+  }, [
+    connectionStatus,
+    instanceId,
+    screenshotPanelExpanded,
+    sidePanelExpanded,
+    isStreaming,
+    setIsStreaming,
+    streamLoop,
+  ]);
+
   // 实例切换时重置自动启动标记
   useEffect(() => {
     hasAutoStartedRef.current = false;
@@ -292,9 +319,7 @@ export function ScreenshotPanel() {
     try {
       const response = await fetch(screenshotUrl);
       const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob }),
-      ]);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     } catch (err) {
       log.warn('复制截图失败:', err);
     }
@@ -343,9 +368,7 @@ export function ScreenshotPanel() {
       const menuItems: MenuItem[] = [
         {
           id: 'stream',
-          label: isStreaming
-            ? t('contextMenu.stopStream')
-            : t('contextMenu.startStream'),
+          label: isStreaming ? t('contextMenu.stopStream') : t('contextMenu.startStream'),
           icon: isStreaming ? Pause : Play,
           disabled: !instanceId || !isConnected,
           onClick: () => toggleStreaming(),
@@ -405,22 +428,37 @@ export function ScreenshotPanel() {
       copyScreenshot,
       disconnect,
       showMenu,
-    ]
+    ],
   );
-  
+
   useEffect(() => {
     // 检测连接状态从非 Connected 变为 Connected
     const wasConnected = prevConnectionStatusRef.current === 'Connected';
     const isConnected = connectionStatus === 'Connected';
     prevConnectionStatusRef.current = connectionStatus;
-    
-    if (isConnected && !wasConnected && !isStreaming && screenshotPanelExpanded && sidePanelExpanded && instanceId) {
+
+    if (
+      isConnected &&
+      !wasConnected &&
+      !isStreaming &&
+      screenshotPanelExpanded &&
+      sidePanelExpanded &&
+      instanceId
+    ) {
       streamingRef.current = true;
       setIsStreaming(true);
       setError(null);
       streamLoop();
     }
-  }, [connectionStatus, instanceId, screenshotPanelExpanded, sidePanelExpanded, isStreaming, setIsStreaming, streamLoop]);
+  }, [
+    connectionStatus,
+    instanceId,
+    screenshotPanelExpanded,
+    sidePanelExpanded,
+    isStreaming,
+    setIsStreaming,
+    streamLoop,
+  ]);
 
   return (
     <div className="bg-bg-secondary rounded-lg border border-border">
@@ -437,14 +475,12 @@ export function ScreenshotPanel() {
         }}
         className={clsx(
           'w-full flex items-center justify-between px-3 py-2 hover:bg-bg-hover transition-colors cursor-pointer',
-          !screenshotPanelExpanded ? 'rounded-lg' : 'rounded-t-lg border-b border-border'
+          !screenshotPanelExpanded ? 'rounded-lg' : 'rounded-t-lg border-b border-border',
         )}
       >
         <div className="flex items-center gap-2">
           <Monitor className="w-4 h-4 text-text-secondary" />
-          <span className="text-sm font-medium text-text-primary">
-            {t('screenshot.title')}
-          </span>
+          <span className="text-sm font-medium text-text-primary">{t('screenshot.title')}</span>
         </div>
         <div className="flex items-center gap-2">
           {/* 流模式开关按钮 */}
@@ -459,18 +495,14 @@ export function ScreenshotPanel() {
               !instanceId
                 ? 'text-text-muted cursor-not-allowed'
                 : isStreaming
-                ? 'text-green-500 hover:bg-bg-tertiary'
-                : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
+                  ? 'text-green-500 hover:bg-bg-tertiary'
+                  : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
             )}
             title={isStreaming ? t('screenshot.stopStream') : t('screenshot.startStream')}
           >
-            {isStreaming ? (
-              <Pause className="w-3.5 h-3.5" />
-            ) : (
-              <Play className="w-3.5 h-3.5" />
-            )}
+            {isStreaming ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           </button>
-          
+
           {/* 全屏按钮 */}
           <button
             onClick={(e) => {
@@ -482,7 +514,7 @@ export function ScreenshotPanel() {
               'p-1 rounded-md transition-colors',
               !screenshotUrl
                 ? 'text-text-muted cursor-not-allowed'
-                : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
+                : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
             )}
             title={t('screenshot.fullscreen')}
           >
@@ -527,9 +559,7 @@ export function ScreenshotPanel() {
                 ) : (
                   <>
                     <span className="text-xs">{t('screenshot.noScreenshot')}</span>
-                    <span className="text-xs text-text-muted">
-                      {t('screenshot.connectFirst')}
-                    </span>
+                    <span className="text-xs text-text-muted">{t('screenshot.connectFirst')}</span>
                   </>
                 )}
               </div>
@@ -540,12 +570,12 @@ export function ScreenshotPanel() {
 
       {/* 全屏模态框 */}
       {isFullscreen && screenshotUrl && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-8"
           onClick={toggleFullscreen}
         >
           {/* 卡片容器 */}
-          <div 
+          <div
             className="relative bg-bg-secondary rounded-xl border border-border shadow-2xl max-w-[90vw] max-h-[90vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             onContextMenu={handleContextMenu}
@@ -573,7 +603,7 @@ export function ScreenshotPanel() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {/* 图片内容区 */}
             <div className="p-4 bg-bg-primary flex items-center justify-center overflow-auto">
               <img
@@ -588,11 +618,7 @@ export function ScreenshotPanel() {
 
       {/* 右键菜单 */}
       {menuState.isOpen && (
-        <ContextMenu
-          items={menuState.items}
-          position={menuState.position}
-          onClose={hideMenu}
-        />
+        <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
       )}
     </div>
   );

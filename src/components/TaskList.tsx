@@ -15,14 +15,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import {
-  ListTodo,
-  Plus,
-  CheckSquare,
-  Square,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react';
+import { ListTodo, Plus, CheckSquare, Square, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { TaskItem } from './TaskItem';
 import { ContextMenu, useContextMenu, type MenuItem } from './ContextMenu';
@@ -43,10 +36,10 @@ export function TaskList() {
   const instance = getActiveInstance();
   const isInstanceRunning = instance?.isRunning || false;
   const { state: menuState, show: showMenu, hide: hideMenu } = useContextMenu();
-  
+
   // 滚动容器引用
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // 当添加新任务后自动滚动到底部
   useEffect(() => {
     if (lastAddedTaskId && scrollContainerRef.current) {
@@ -70,7 +63,7 @@ export function TaskList() {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // 禁止 X 方向拖动，仅允许垂直排序
@@ -82,7 +75,7 @@ export function TaskList() {
   const handleDragEnd = (event: DragEndEvent) => {
     // 运行时禁止重新排序
     if (isInstanceRunning) return;
-    
+
     const { active, over } = event;
 
     if (over && active.id !== over.id && instance) {
@@ -115,9 +108,7 @@ export function TaskList() {
               { id: 'divider-1', label: '', divider: true },
               {
                 id: 'select-all',
-                label: hasEnabledTasks
-                  ? t('contextMenu.deselectAll')
-                  : t('contextMenu.selectAll'),
+                label: hasEnabledTasks ? t('contextMenu.deselectAll') : t('contextMenu.selectAll'),
                 icon: hasEnabledTasks ? Square : CheckSquare,
                 onClick: () => selectAllTasks(instance.id, !hasEnabledTasks),
               },
@@ -143,7 +134,7 @@ export function TaskList() {
       selectAllTasks,
       collapseAllTasks,
       showMenu,
-    ]
+    ],
   );
 
   if (!instance) {
@@ -168,11 +159,7 @@ export function TaskList() {
           <p className="text-xs">{t('taskList.dragToReorder')}</p>
         </div>
         {menuState.isOpen && (
-          <ContextMenu
-            items={menuState.items}
-            position={menuState.position}
-            onClose={hideMenu}
-          />
+          <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
         )}
       </>
     );
@@ -180,9 +167,9 @@ export function TaskList() {
 
   return (
     <>
-      <div 
+      <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-3" 
+        className="flex-1 overflow-y-auto overflow-x-hidden p-3"
         onContextMenu={handleListContextMenu}
       >
         <DndContext
@@ -191,10 +178,7 @@ export function TaskList() {
           onDragEnd={handleDragEnd}
           modifiers={[restrictHorizontalMovement]}
         >
-          <SortableContext
-            items={tasks.map((t) => t.id)}
-            strategy={verticalListSortingStrategy}
-          >
+          <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
               {tasks.map((task) => (
                 <TaskItem key={task.id} instanceId={instance.id} task={task} />
@@ -204,11 +188,7 @@ export function TaskList() {
         </DndContext>
       </div>
       {menuState.isOpen && (
-        <ContextMenu
-          items={menuState.items}
-          position={menuState.position}
-          onClose={hideMenu}
-        />
+        <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
       )}
     </>
   );

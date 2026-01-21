@@ -1,8 +1,27 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { ProjectInterface, Instance, SelectedTask, OptionValue, TaskItem, OptionDefinition, SavedDeviceInfo } from '@/types/interface';
-import type { MxuConfig, WindowSize, UpdateChannel, MirrorChyanSettings, RecentlyClosedInstance, ScreenshotFrameRate } from '@/types/config';
-import { defaultWindowSize, defaultMirrorChyanSettings, defaultScreenshotFrameRate } from '@/types/config';
+import type {
+  ProjectInterface,
+  Instance,
+  SelectedTask,
+  OptionValue,
+  TaskItem,
+  OptionDefinition,
+  SavedDeviceInfo,
+} from '@/types/interface';
+import type {
+  MxuConfig,
+  WindowSize,
+  UpdateChannel,
+  MirrorChyanSettings,
+  RecentlyClosedInstance,
+  ScreenshotFrameRate,
+} from '@/types/config';
+import {
+  defaultWindowSize,
+  defaultMirrorChyanSettings,
+  defaultScreenshotFrameRate,
+} from '@/types/config';
 
 // 最近关闭列表最大条目数
 const MAX_RECENTLY_CLOSED = 30;
@@ -42,7 +61,7 @@ interface AppState {
   // Interface 数据
   projectInterface: ProjectInterface | null;
   interfaceTranslations: Record<string, Record<string, string>>;
-  basePath: string;  // 资源基础路径，用于保存配置
+  basePath: string; // 资源基础路径，用于保存配置
   setProjectInterface: (pi: ProjectInterface) => void;
   setInterfaceTranslations: (lang: string, translations: Record<string, string>) => void;
   setBasePath: (path: string) => void;
@@ -50,7 +69,7 @@ interface AppState {
   // 多开实例
   instances: Instance[];
   activeInstanceId: string | null;
-  nextInstanceNumber: number;  // 递增计数器，确保实例名字编号不重复
+  nextInstanceNumber: number; // 递增计数器，确保实例名字编号不重复
   createInstance: (name?: string) => string;
   removeInstance: (id: string) => void;
   setActiveInstance: (id: string) => void;
@@ -67,7 +86,12 @@ interface AppState {
   reorderTasks: (instanceId: string, oldIndex: number, newIndex: number) => void;
   toggleTaskEnabled: (instanceId: string, taskId: string) => void;
   toggleTaskExpanded: (instanceId: string, taskId: string) => void;
-  setTaskOptionValue: (instanceId: string, taskId: string, optionKey: string, value: OptionValue) => void;
+  setTaskOptionValue: (
+    instanceId: string,
+    taskId: string,
+    optionKey: string,
+    value: OptionValue,
+  ) => void;
   selectAllTasks: (instanceId: string, enabled: boolean) => void;
   collapseAllTasks: (instanceId: string, expanded: boolean) => void;
   renameTask: (instanceId: string, taskId: string, newName: string) => void;
@@ -129,13 +153,16 @@ interface AppState {
 
   // 从后端恢复 MAA 运行时状态
   restoreBackendStates: (states: {
-    instances: Record<string, {
-      connected: boolean;
-      resourceLoaded: boolean;
-      taskerInited: boolean;
-      isRunning: boolean;
-      taskIds: number[];
-    }>;
+    instances: Record<
+      string,
+      {
+        connected: boolean;
+        resourceLoaded: boolean;
+        taskerInited: boolean;
+        isRunning: boolean;
+        taskIds: number[];
+      }
+    >;
     cachedAdbDevices: AdbDevice[];
     cachedWin32Windows: Win32Window[];
   }) => void;
@@ -186,11 +213,11 @@ interface AppState {
   // Welcome 弹窗显示记录
   welcomeShownHash: string;
   setWelcomeShownHash: (hash: string) => void;
-  
+
   // 开发模式
   devMode: boolean;
   setDevMode: (devMode: boolean) => void;
-  
+
   // 更新检查状态
   updateInfo: UpdateInfo | null;
   updateCheckLoading: boolean;
@@ -266,7 +293,7 @@ interface AppState {
   ctrlIdToName: Record<number, string>;
   resIdToName: Record<number, string>;
   taskIdToName: Record<number, string>;
-  entryToTaskName: Record<string, string>;  // entry -> 任务显示名（解决时序问题）
+  entryToTaskName: Record<string, string>; // entry -> 任务显示名（解决时序问题）
   registerCtrlIdName: (ctrlId: number, name: string) => void;
   registerResIdName: (resId: number, name: string) => void;
   registerTaskIdName: (taskId: number, name: string) => void;
@@ -328,7 +355,7 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 const createDefaultOptionValue = (optionDef: OptionDefinition): OptionValue => {
   if (optionDef.type === 'input') {
     const values: Record<string, string> = {};
-    optionDef.inputs.forEach(input => {
+    optionDef.inputs.forEach((input) => {
       values[input.name] = input.default || '';
     });
     return { type: 'input', values };
@@ -354,7 +381,7 @@ const createDefaultOptionValue = (optionDef: OptionDefinition): OptionValue => {
 const initializeAllOptionValues = (
   optionKeys: string[],
   allOptions: Record<string, OptionDefinition>,
-  result: Record<string, OptionValue> = {}
+  result: Record<string, OptionValue> = {},
 ): Record<string, OptionValue> => {
   for (const optKey of optionKeys) {
     const optDef = allOptions[optKey];
@@ -380,7 +407,8 @@ const initializeAllOptionValues = (
           return ['No', 'no', 'N', 'n'].includes(c.name);
         });
       } else if ('cases' in optDef) {
-        const caseName = currentValue.type === 'select' ? currentValue.caseName : optDef.cases?.[0]?.name;
+        const caseName =
+          currentValue.type === 'select' ? currentValue.caseName : optDef.cases?.[0]?.name;
         selectedCase = optDef.cases?.find((c) => c.name === caseName);
       }
 
@@ -395,55 +423,56 @@ const initializeAllOptionValues = (
 };
 
 export const useAppStore = create<AppState>()(
-  subscribeWithSelector(
-    (set, get) => ({
-      // 主题和语言
-      theme: 'light',
-      language: 'zh-CN',
-      setTheme: (theme) => {
-        set({ theme });
-        document.documentElement.classList.toggle('dark', theme === 'dark');
-      },
-      setLanguage: (lang) => {
-        set({ language: lang });
-        localStorage.setItem('mxu-language', lang);
-      },
+  subscribeWithSelector((set, get) => ({
+    // 主题和语言
+    theme: 'light',
+    language: 'zh-CN',
+    setTheme: (theme) => {
+      set({ theme });
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+    },
+    setLanguage: (lang) => {
+      set({ language: lang });
+      localStorage.setItem('mxu-language', lang);
+    },
 
-      // 当前页面
-      currentPage: 'main',
-      setCurrentPage: (page) => set({ currentPage: page }),
+    // 当前页面
+    currentPage: 'main',
+    setCurrentPage: (page) => set({ currentPage: page }),
 
-      // Interface 数据
-      projectInterface: null,
-      interfaceTranslations: {},
-      basePath: '.',
-      setProjectInterface: (pi) => set({ projectInterface: pi }),
-      setInterfaceTranslations: (lang, translations) => set((state) => ({
+    // Interface 数据
+    projectInterface: null,
+    interfaceTranslations: {},
+    basePath: '.',
+    setProjectInterface: (pi) => set({ projectInterface: pi }),
+    setInterfaceTranslations: (lang, translations) =>
+      set((state) => ({
         interfaceTranslations: {
           ...state.interfaceTranslations,
           [lang]: translations,
         },
       })),
-      setBasePath: (path) => set({ basePath: path }),
+    setBasePath: (path) => set({ basePath: path }),
 
-      // 多开实例
-      instances: [],
-      activeInstanceId: null,
-      nextInstanceNumber: 1,
+    // 多开实例
+    instances: [],
+    activeInstanceId: null,
+    nextInstanceNumber: 1,
 
-      createInstance: (name) => {
-        const id = generateId();
-        const instanceNumber = get().nextInstanceNumber;
-        const pi = get().projectInterface;
+    createInstance: (name) => {
+      const id = generateId();
+      const instanceNumber = get().nextInstanceNumber;
+      const pi = get().projectInterface;
 
-        // 初始化默认选中的任务
-        const defaultTasks: SelectedTask[] = [];
-        if (pi) {
-          pi.task.filter(t => t.default_check).forEach(task => {
+      // 初始化默认选中的任务
+      const defaultTasks: SelectedTask[] = [];
+      if (pi) {
+        pi.task
+          .filter((t) => t.default_check)
+          .forEach((task) => {
             // 递归初始化所有选项（包括嵌套选项）
-            const optionValues = task.option && pi.option
-              ? initializeAllOptionValues(task.option, pi.option)
-              : {};
+            const optionValues =
+              task.option && pi.option ? initializeAllOptionValues(task.option, pi.option) : {};
             defaultTasks.push({
               id: generateId(),
               taskName: task.name,
@@ -452,28 +481,29 @@ export const useAppStore = create<AppState>()(
               expanded: false,
             });
           });
-        }
+      }
 
-        const newInstance: Instance = {
-          id,
-          // 传入基础名称时拼接数字，未传入时使用 fallback
-          name: name ? `${name} ${instanceNumber}` : `Config ${instanceNumber}`,
-          selectedTasks: defaultTasks,
-          isRunning: false,
-        };
+      const newInstance: Instance = {
+        id,
+        // 传入基础名称时拼接数字，未传入时使用 fallback
+        name: name ? `${name} ${instanceNumber}` : `Config ${instanceNumber}`,
+        selectedTasks: defaultTasks,
+        isRunning: false,
+      };
 
-        set((state) => ({
-          instances: [...state.instances, newInstance],
-          activeInstanceId: id,
-          nextInstanceNumber: state.nextInstanceNumber + 1,
-        }));
+      set((state) => ({
+        instances: [...state.instances, newInstance],
+        activeInstanceId: id,
+        nextInstanceNumber: state.nextInstanceNumber + 1,
+      }));
 
-        return id;
-      },
+      return id;
+    },
 
-      removeInstance: (id) => set((state) => {
-        const instanceToClose = state.instances.find(i => i.id === id);
-        const newInstances = state.instances.filter(i => i.id !== id);
+    removeInstance: (id) =>
+      set((state) => {
+        const instanceToClose = state.instances.find((i) => i.id === id);
+        const newInstances = state.instances.filter((i) => i.id !== id);
         let newActiveId = state.activeInstanceId;
 
         if (state.activeInstanceId === id) {
@@ -492,7 +522,7 @@ export const useAppStore = create<AppState>()(
             controllerName: instanceToClose.controllerName,
             resourceName: instanceToClose.resourceName,
             savedDevice: instanceToClose.savedDevice,
-            tasks: instanceToClose.selectedTasks.map(t => ({
+            tasks: instanceToClose.selectedTasks.map((t) => ({
               id: t.id,
               taskName: t.taskName,
               customName: t.customName,
@@ -512,73 +542,71 @@ export const useAppStore = create<AppState>()(
         };
       }),
 
-      setActiveInstance: (id) => set({ activeInstanceId: id }),
+    setActiveInstance: (id) => set({ activeInstanceId: id }),
 
-      updateInstance: (id, updates) => set((state) => ({
-        instances: state.instances.map(i =>
-          i.id === id ? { ...i, ...updates } : i
-        ),
+    updateInstance: (id, updates) =>
+      set((state) => ({
+        instances: state.instances.map((i) => (i.id === id ? { ...i, ...updates } : i)),
       })),
 
-      renameInstance: (id, newName) => set((state) => ({
-        instances: state.instances.map(i =>
-          i.id === id ? { ...i, name: newName } : i
-        ),
+    renameInstance: (id, newName) =>
+      set((state) => ({
+        instances: state.instances.map((i) => (i.id === id ? { ...i, name: newName } : i)),
       })),
 
-      reorderInstances: (oldIndex, newIndex) => set((state) => {
+    reorderInstances: (oldIndex, newIndex) =>
+      set((state) => {
         const instances = [...state.instances];
         const [removed] = instances.splice(oldIndex, 1);
         instances.splice(newIndex, 0, removed);
         return { instances };
       }),
 
-      getActiveInstance: () => {
-        const state = get();
-        return state.instances.find(i => i.id === state.activeInstanceId) || null;
-      },
+    getActiveInstance: () => {
+      const state = get();
+      return state.instances.find((i) => i.id === state.activeInstanceId) || null;
+    },
 
-      // 任务操作
-      addTaskToInstance: (instanceId, task) => {
-        const pi = get().projectInterface;
-        if (!pi) return;
+    // 任务操作
+    addTaskToInstance: (instanceId, task) => {
+      const pi = get().projectInterface;
+      if (!pi) return;
 
-        // 递归初始化所有选项（包括嵌套选项）
-        const optionValues = task.option && pi.option
-          ? initializeAllOptionValues(task.option, pi.option)
-          : {};
+      // 递归初始化所有选项（包括嵌套选项）
+      const optionValues =
+        task.option && pi.option ? initializeAllOptionValues(task.option, pi.option) : {};
 
-        // 判断新任务是否有选项（用于决定是否展开）
-        const hasOptions = !!(task.option && task.option.length > 0);
+      // 判断新任务是否有选项（用于决定是否展开）
+      const hasOptions = !!(task.option && task.option.length > 0);
 
-        const newTask: SelectedTask = {
-          id: generateId(),
-          taskName: task.name,
-          enabled: true,
-          optionValues,
-          expanded: hasOptions, // 有选项的任务自动展开
-        };
+      const newTask: SelectedTask = {
+        id: generateId(),
+        taskName: task.name,
+        enabled: true,
+        optionValues,
+        expanded: hasOptions, // 有选项的任务自动展开
+      };
 
-        set((state) => ({
-          instances: state.instances.map(i =>
-            i.id === instanceId
-              ? { ...i, selectedTasks: [...i.selectedTasks, newTask] }
-              : i
-          ),
-          lastAddedTaskId: newTask.id, // 记录最近添加的任务 ID
-        }));
-      },
+      set((state) => ({
+        instances: state.instances.map((i) =>
+          i.id === instanceId ? { ...i, selectedTasks: [...i.selectedTasks, newTask] } : i,
+        ),
+        lastAddedTaskId: newTask.id, // 记录最近添加的任务 ID
+      }));
+    },
 
-      removeTaskFromInstance: (instanceId, taskId) => set((state) => ({
-        instances: state.instances.map(i =>
+    removeTaskFromInstance: (instanceId, taskId) =>
+      set((state) => ({
+        instances: state.instances.map((i) =>
           i.id === instanceId
-            ? { ...i, selectedTasks: i.selectedTasks.filter(t => t.id !== taskId) }
-            : i
+            ? { ...i, selectedTasks: i.selectedTasks.filter((t) => t.id !== taskId) }
+            : i,
         ),
       })),
 
-      reorderTasks: (instanceId, oldIndex, newIndex) => set((state) => ({
-        instances: state.instances.map(i => {
+    reorderTasks: (instanceId, oldIndex, newIndex) =>
+      set((state) => ({
+        instances: state.instances.map((i) => {
           if (i.id !== instanceId) return i;
 
           const tasks = [...i.selectedTasks];
@@ -589,168 +617,180 @@ export const useAppStore = create<AppState>()(
         }),
       })),
 
-      toggleTaskEnabled: (instanceId, taskId) => set((state) => ({
-        instances: state.instances.map(i =>
+    toggleTaskEnabled: (instanceId, taskId) =>
+      set((state) => ({
+        instances: state.instances.map((i) =>
           i.id === instanceId
             ? {
-              ...i,
-              selectedTasks: i.selectedTasks.map(t =>
-                t.id === taskId ? { ...t, enabled: !t.enabled } : t
-              ),
-            }
-            : i
+                ...i,
+                selectedTasks: i.selectedTasks.map((t) =>
+                  t.id === taskId ? { ...t, enabled: !t.enabled } : t,
+                ),
+              }
+            : i,
         ),
       })),
 
-      toggleTaskExpanded: (instanceId, taskId) => set((state) => ({
-        instances: state.instances.map(i =>
+    toggleTaskExpanded: (instanceId, taskId) =>
+      set((state) => ({
+        instances: state.instances.map((i) =>
           i.id === instanceId
             ? {
-              ...i,
-              selectedTasks: i.selectedTasks.map(t =>
-                t.id === taskId ? { ...t, expanded: !t.expanded } : t
-              ),
-            }
-            : i
+                ...i,
+                selectedTasks: i.selectedTasks.map((t) =>
+                  t.id === taskId ? { ...t, expanded: !t.expanded } : t,
+                ),
+              }
+            : i,
         ),
       })),
 
-      setTaskOptionValue: (instanceId, taskId, optionKey, value) => {
-        const pi = get().projectInterface;
+    setTaskOptionValue: (instanceId, taskId, optionKey, value) => {
+      const pi = get().projectInterface;
 
-        set((state) => ({
-          instances: state.instances.map(i => {
-            if (i.id !== instanceId) return i;
+      set((state) => ({
+        instances: state.instances.map((i) => {
+          if (i.id !== instanceId) return i;
 
-            return {
-              ...i,
-              selectedTasks: i.selectedTasks.map(t => {
-                if (t.id !== taskId) return t;
+          return {
+            ...i,
+            selectedTasks: i.selectedTasks.map((t) => {
+              if (t.id !== taskId) return t;
 
-                const newOptionValues = { ...t.optionValues, [optionKey]: value };
+              const newOptionValues = { ...t.optionValues, [optionKey]: value };
 
-                // 当选项值改变时，初始化新的嵌套选项
-                if (pi?.option) {
-                  const optDef = pi.option[optionKey];
-                  if (optDef && (optDef.type === 'switch' || optDef.type === 'select' || !optDef.type) && 'cases' in optDef) {
-                    let selectedCase;
+              // 当选项值改变时，初始化新的嵌套选项
+              if (pi?.option) {
+                const optDef = pi.option[optionKey];
+                if (
+                  optDef &&
+                  (optDef.type === 'switch' || optDef.type === 'select' || !optDef.type) &&
+                  'cases' in optDef
+                ) {
+                  let selectedCase;
 
-                    if (optDef.type === 'switch') {
-                      const isChecked = value.type === 'switch' && value.value;
-                      selectedCase = optDef.cases?.find((c) => {
-                        if (isChecked) {
-                          return ['Yes', 'yes', 'Y', 'y'].includes(c.name);
-                        }
-                        return ['No', 'no', 'N', 'n'].includes(c.name);
-                      });
-                    } else {
-                      const caseName = value.type === 'select' ? value.caseName : optDef.cases?.[0]?.name;
-                      selectedCase = optDef.cases?.find((c) => c.name === caseName);
-                    }
+                  if (optDef.type === 'switch') {
+                    const isChecked = value.type === 'switch' && value.value;
+                    selectedCase = optDef.cases?.find((c) => {
+                      if (isChecked) {
+                        return ['Yes', 'yes', 'Y', 'y'].includes(c.name);
+                      }
+                      return ['No', 'no', 'N', 'n'].includes(c.name);
+                    });
+                  } else {
+                    const caseName =
+                      value.type === 'select' ? value.caseName : optDef.cases?.[0]?.name;
+                    selectedCase = optDef.cases?.find((c) => c.name === caseName);
+                  }
 
-                    // 初始化嵌套选项（如果尚未初始化）
-                    if (selectedCase?.option && selectedCase.option.length > 0) {
-                      for (const nestedKey of selectedCase.option) {
-                        if (!newOptionValues[nestedKey]) {
-                          const nestedDef = pi.option[nestedKey];
-                          if (nestedDef) {
-                            const nestedValues = initializeAllOptionValues([nestedKey], pi.option);
-                            Object.assign(newOptionValues, nestedValues);
-                          }
+                  // 初始化嵌套选项（如果尚未初始化）
+                  if (selectedCase?.option && selectedCase.option.length > 0) {
+                    for (const nestedKey of selectedCase.option) {
+                      if (!newOptionValues[nestedKey]) {
+                        const nestedDef = pi.option[nestedKey];
+                        if (nestedDef) {
+                          const nestedValues = initializeAllOptionValues([nestedKey], pi.option);
+                          Object.assign(newOptionValues, nestedValues);
                         }
                       }
                     }
                   }
                 }
+              }
 
-                return { ...t, optionValues: newOptionValues };
-              }),
-            };
-          }),
-        }));
-      },
+              return { ...t, optionValues: newOptionValues };
+            }),
+          };
+        }),
+      }));
+    },
 
-      selectAllTasks: (instanceId, enabled) => set((state) => ({
-        instances: state.instances.map(i =>
+    selectAllTasks: (instanceId, enabled) =>
+      set((state) => ({
+        instances: state.instances.map((i) =>
           i.id === instanceId
             ? {
-              ...i,
-              selectedTasks: i.selectedTasks.map(t => ({ ...t, enabled })),
-            }
-            : i
+                ...i,
+                selectedTasks: i.selectedTasks.map((t) => ({ ...t, enabled })),
+              }
+            : i,
         ),
       })),
 
-      collapseAllTasks: (instanceId, expanded) => set((state) => ({
-        instances: state.instances.map(i =>
+    collapseAllTasks: (instanceId, expanded) =>
+      set((state) => ({
+        instances: state.instances.map((i) =>
           i.id === instanceId
             ? {
-              ...i,
-              selectedTasks: i.selectedTasks.map(t => ({ ...t, expanded })),
-            }
-            : i
+                ...i,
+                selectedTasks: i.selectedTasks.map((t) => ({ ...t, expanded })),
+              }
+            : i,
         ),
       })),
 
-      renameTask: (instanceId, taskId, newName) => set((state) => ({
-        instances: state.instances.map(i =>
+    renameTask: (instanceId, taskId, newName) =>
+      set((state) => ({
+        instances: state.instances.map((i) =>
           i.id === instanceId
             ? {
-              ...i,
-              selectedTasks: i.selectedTasks.map(t =>
-                t.id === taskId ? { ...t, customName: newName || undefined } : t
-              ),
-            }
-            : i
+                ...i,
+                selectedTasks: i.selectedTasks.map((t) =>
+                  t.id === taskId ? { ...t, customName: newName || undefined } : t,
+                ),
+              }
+            : i,
         ),
       })),
 
-      // 复制任务
-      duplicateTask: (instanceId, taskId) => {
-        const state = get();
-        const instance = state.instances.find(i => i.id === instanceId);
-        if (!instance) return;
+    // 复制任务
+    duplicateTask: (instanceId, taskId) => {
+      const state = get();
+      const instance = state.instances.find((i) => i.id === instanceId);
+      if (!instance) return;
 
-        const taskIndex = instance.selectedTasks.findIndex(t => t.id === taskId);
-        if (taskIndex === -1) return;
+      const taskIndex = instance.selectedTasks.findIndex((t) => t.id === taskId);
+      if (taskIndex === -1) return;
 
-        const originalTask = instance.selectedTasks[taskIndex];
+      const originalTask = instance.selectedTasks[taskIndex];
 
-        // 计算新任务的显示名称
-        let newCustomName: string;
-        if (originalTask.customName) {
-          newCustomName = `${originalTask.customName}（副本）`;
-        } else {
-          // 获取任务的原始 label
-          const taskDef = state.projectInterface?.task.find(t => t.name === originalTask.taskName);
-          const langKey = getInterfaceLangKey(state.language);
-          const originalLabel = state.resolveI18nText(taskDef?.label, langKey) || taskDef?.name || originalTask.taskName;
-          newCustomName = `${originalLabel}（副本）`;
-        }
+      // 计算新任务的显示名称
+      let newCustomName: string;
+      if (originalTask.customName) {
+        newCustomName = `${originalTask.customName}（副本）`;
+      } else {
+        // 获取任务的原始 label
+        const taskDef = state.projectInterface?.task.find((t) => t.name === originalTask.taskName);
+        const langKey = getInterfaceLangKey(state.language);
+        const originalLabel =
+          state.resolveI18nText(taskDef?.label, langKey) || taskDef?.name || originalTask.taskName;
+        newCustomName = `${originalLabel}（副本）`;
+      }
 
-        const newTask: SelectedTask = {
-          ...originalTask,
-          id: generateId(),
-          customName: newCustomName,
-          optionValues: { ...originalTask.optionValues },
-        };
+      const newTask: SelectedTask = {
+        ...originalTask,
+        id: generateId(),
+        customName: newCustomName,
+        optionValues: { ...originalTask.optionValues },
+      };
 
-        const tasks = [...instance.selectedTasks];
-        tasks.splice(taskIndex + 1, 0, newTask);
+      const tasks = [...instance.selectedTasks];
+      tasks.splice(taskIndex + 1, 0, newTask);
 
-        set({
-          instances: state.instances.map(i =>
-            i.id === instanceId ? { ...i, selectedTasks: tasks } : i
-          ),
-        });
-      },
+      set({
+        instances: state.instances.map((i) =>
+          i.id === instanceId ? { ...i, selectedTasks: tasks } : i,
+        ),
+      });
+    },
 
-      // 上移任务
-      moveTaskUp: (instanceId, taskId) => set((state) => ({
-        instances: state.instances.map(i => {
+    // 上移任务
+    moveTaskUp: (instanceId, taskId) =>
+      set((state) => ({
+        instances: state.instances.map((i) => {
           if (i.id !== instanceId) return i;
 
-          const taskIndex = i.selectedTasks.findIndex(t => t.id === taskId);
+          const taskIndex = i.selectedTasks.findIndex((t) => t.id === taskId);
           if (taskIndex <= 0) return i;
 
           const tasks = [...i.selectedTasks];
@@ -760,12 +800,13 @@ export const useAppStore = create<AppState>()(
         }),
       })),
 
-      // 下移任务
-      moveTaskDown: (instanceId, taskId) => set((state) => ({
-        instances: state.instances.map(i => {
+    // 下移任务
+    moveTaskDown: (instanceId, taskId) =>
+      set((state) => ({
+        instances: state.instances.map((i) => {
           if (i.id !== instanceId) return i;
 
-          const taskIndex = i.selectedTasks.findIndex(t => t.id === taskId);
+          const taskIndex = i.selectedTasks.findIndex((t) => t.id === taskId);
           if (taskIndex === -1 || taskIndex >= i.selectedTasks.length - 1) return i;
 
           const tasks = [...i.selectedTasks];
@@ -775,12 +816,13 @@ export const useAppStore = create<AppState>()(
         }),
       })),
 
-      // 置顶任务
-      moveTaskToTop: (instanceId, taskId) => set((state) => ({
-        instances: state.instances.map(i => {
+    // 置顶任务
+    moveTaskToTop: (instanceId, taskId) =>
+      set((state) => ({
+        instances: state.instances.map((i) => {
           if (i.id !== instanceId) return i;
 
-          const taskIndex = i.selectedTasks.findIndex(t => t.id === taskId);
+          const taskIndex = i.selectedTasks.findIndex((t) => t.id === taskId);
           if (taskIndex <= 0) return i;
 
           const tasks = [...i.selectedTasks];
@@ -791,12 +833,13 @@ export const useAppStore = create<AppState>()(
         }),
       })),
 
-      // 置底任务
-      moveTaskToBottom: (instanceId, taskId) => set((state) => ({
-        instances: state.instances.map(i => {
+    // 置底任务
+    moveTaskToBottom: (instanceId, taskId) =>
+      set((state) => ({
+        instances: state.instances.map((i) => {
           if (i.id !== instanceId) return i;
 
-          const taskIndex = i.selectedTasks.findIndex(t => t.id === taskId);
+          const taskIndex = i.selectedTasks.findIndex((t) => t.id === taskId);
           if (taskIndex === -1 || taskIndex >= i.selectedTasks.length - 1) return i;
 
           const tasks = [...i.selectedTasks];
@@ -807,212 +850,215 @@ export const useAppStore = create<AppState>()(
         }),
       })),
 
-      // 复制实例
-      duplicateInstance: (instanceId) => {
-        const state = get();
-        const sourceInstance = state.instances.find(i => i.id === instanceId);
-        if (!sourceInstance) return '';
+    // 复制实例
+    duplicateInstance: (instanceId) => {
+      const state = get();
+      const sourceInstance = state.instances.find((i) => i.id === instanceId);
+      if (!sourceInstance) return '';
 
-        const newId = generateId();
-        const instanceNumber = state.nextInstanceNumber;
+      const newId = generateId();
+      const instanceNumber = state.nextInstanceNumber;
 
-        const newInstance: Instance = {
-          ...sourceInstance,
-          id: newId,
-          name: `${sourceInstance.name} (副本)`,
-          selectedTasks: sourceInstance.selectedTasks.map(t => ({
-            ...t,
-            id: generateId(),
-            optionValues: { ...t.optionValues },
-          })),
-          isRunning: false,
-        };
+      const newInstance: Instance = {
+        ...sourceInstance,
+        id: newId,
+        name: `${sourceInstance.name} (副本)`,
+        selectedTasks: sourceInstance.selectedTasks.map((t) => ({
+          ...t,
+          id: generateId(),
+          optionValues: { ...t.optionValues },
+        })),
+        isRunning: false,
+      };
 
-        set({
-          instances: [...state.instances, newInstance],
-          activeInstanceId: newId,
-          nextInstanceNumber: instanceNumber + 1,
-        });
+      set({
+        instances: [...state.instances, newInstance],
+        activeInstanceId: newId,
+        nextInstanceNumber: instanceNumber + 1,
+      });
 
-        return newId;
-      },
+      return newId;
+    },
 
-      // 全局 UI 状态
-      showAddTaskPanel: false,
-      setShowAddTaskPanel: (show) => set({ showAddTaskPanel: show }),
+    // 全局 UI 状态
+    showAddTaskPanel: false,
+    setShowAddTaskPanel: (show) => set({ showAddTaskPanel: show }),
 
-      // 最近添加的任务 ID
-      lastAddedTaskId: null,
-      clearLastAddedTaskId: () => set({ lastAddedTaskId: null }),
+    // 最近添加的任务 ID
+    lastAddedTaskId: null,
+    clearLastAddedTaskId: () => set({ lastAddedTaskId: null }),
 
-      // 国际化文本解析
-      resolveI18nText: (text, lang) => {
-        if (!text) return '';
-        if (!text.startsWith('$')) return text;
+    // 国际化文本解析
+    resolveI18nText: (text, lang) => {
+      if (!text) return '';
+      if (!text.startsWith('$')) return text;
 
-        const key = text.slice(1);
-        const translations = get().interfaceTranslations[lang];
-        return translations?.[key] || key;
-      },
+      const key = text.slice(1);
+      const translations = get().interfaceTranslations[lang];
+      return translations?.[key] || key;
+    },
 
-      // 配置导入
-      importConfig: (config) => {
-        const instances: Instance[] = config.instances.map(inst => ({
-          id: inst.id,
-          name: inst.name,
-          controllerId: inst.controllerId,
-          resourceId: inst.resourceId,
-          controllerName: inst.controllerName,
-          resourceName: inst.resourceName,
-          savedDevice: inst.savedDevice,
-          selectedTasks: inst.tasks.map(t => ({
-            id: t.id,
-            taskName: t.taskName,
-            customName: t.customName,
-            enabled: t.enabled,
-            optionValues: t.optionValues,
-            expanded: false,
-          })),
-          isRunning: false,
-          schedulePolicies: inst.schedulePolicies,
-        }));
+    // 配置导入
+    importConfig: (config) => {
+      const instances: Instance[] = config.instances.map((inst) => ({
+        id: inst.id,
+        name: inst.name,
+        controllerId: inst.controllerId,
+        resourceId: inst.resourceId,
+        controllerName: inst.controllerName,
+        resourceName: inst.resourceName,
+        savedDevice: inst.savedDevice,
+        selectedTasks: inst.tasks.map((t) => ({
+          id: t.id,
+          taskName: t.taskName,
+          customName: t.customName,
+          enabled: t.enabled,
+          optionValues: t.optionValues,
+          expanded: false,
+        })),
+        isRunning: false,
+        schedulePolicies: inst.schedulePolicies,
+      }));
 
-        // 恢复选中的控制器和资源状态
-        const selectedController: Record<string, string> = {};
-        const selectedResource: Record<string, string> = {};
-        instances.forEach(inst => {
-          if (inst.controllerName) {
-            selectedController[inst.id] = inst.controllerName;
-          }
-          if (inst.resourceName) {
-            selectedResource[inst.id] = inst.resourceName;
-          }
-        });
+      // 恢复选中的控制器和资源状态
+      const selectedController: Record<string, string> = {};
+      const selectedResource: Record<string, string> = {};
+      instances.forEach((inst) => {
+        if (inst.controllerName) {
+          selectedController[inst.id] = inst.controllerName;
+        }
+        if (inst.resourceName) {
+          selectedResource[inst.id] = inst.resourceName;
+        }
+      });
 
-        // 根据已有实例名字计算下一个编号，避免重复
-        let maxNumber = 0;
-        instances.forEach(inst => {
-          const match = inst.name.match(/^配置\s*(\d+)$/);
-          if (match) {
-            maxNumber = Math.max(maxNumber, parseInt(match[1], 10));
-          }
-        });
+      // 根据已有实例名字计算下一个编号，避免重复
+      let maxNumber = 0;
+      instances.forEach((inst) => {
+        const match = inst.name.match(/^配置\s*(\d+)$/);
+        if (match) {
+          maxNumber = Math.max(maxNumber, parseInt(match[1], 10));
+        }
+      });
 
-        set({
-          instances,
-          activeInstanceId: instances.length > 0 ? instances[0].id : null,
-          theme: config.settings.theme,
-          language: config.settings.language,
-          selectedController,
-          selectedResource,
-          nextInstanceNumber: maxNumber + 1,
-          windowSize: config.settings.windowSize || defaultWindowSize,
-          mirrorChyanSettings: config.settings.mirrorChyan || defaultMirrorChyanSettings,
-          showOptionPreview: config.settings.showOptionPreview ?? true,
-          sidePanelExpanded: config.settings.sidePanelExpanded ?? true,
-          rightPanelWidth: config.settings.rightPanelWidth ?? 320,
-          rightPanelCollapsed: config.settings.rightPanelCollapsed ?? false,
-          connectionPanelExpanded: config.settings.connectionPanelExpanded ?? true,
-          screenshotPanelExpanded: config.settings.screenshotPanelExpanded ?? true,
-          screenshotFrameRate: config.settings.screenshotFrameRate ?? defaultScreenshotFrameRate,
-          welcomeShownHash: config.settings.welcomeShownHash ?? '',
-          devMode: config.settings.devMode ?? false,
-          recentlyClosed: config.recentlyClosed || [],
-        });
+      set({
+        instances,
+        activeInstanceId: instances.length > 0 ? instances[0].id : null,
+        theme: config.settings.theme,
+        language: config.settings.language,
+        selectedController,
+        selectedResource,
+        nextInstanceNumber: maxNumber + 1,
+        windowSize: config.settings.windowSize || defaultWindowSize,
+        mirrorChyanSettings: config.settings.mirrorChyan || defaultMirrorChyanSettings,
+        showOptionPreview: config.settings.showOptionPreview ?? true,
+        sidePanelExpanded: config.settings.sidePanelExpanded ?? true,
+        rightPanelWidth: config.settings.rightPanelWidth ?? 320,
+        rightPanelCollapsed: config.settings.rightPanelCollapsed ?? false,
+        connectionPanelExpanded: config.settings.connectionPanelExpanded ?? true,
+        screenshotPanelExpanded: config.settings.screenshotPanelExpanded ?? true,
+        screenshotFrameRate: config.settings.screenshotFrameRate ?? defaultScreenshotFrameRate,
+        welcomeShownHash: config.settings.welcomeShownHash ?? '',
+        devMode: config.settings.devMode ?? false,
+        recentlyClosed: config.recentlyClosed || [],
+      });
 
-        document.documentElement.classList.toggle('dark', config.settings.theme === 'dark');
-        localStorage.setItem('mxu-language', config.settings.language);
-      },
+      document.documentElement.classList.toggle('dark', config.settings.theme === 'dark');
+      localStorage.setItem('mxu-language', config.settings.language);
+    },
 
-      // MaaFramework 状态
-      maaInitialized: false,
-      maaVersion: null,
-      setMaaInitialized: (initialized, version) => set({
+    // MaaFramework 状态
+    maaInitialized: false,
+    maaVersion: null,
+    setMaaInitialized: (initialized, version) =>
+      set({
         maaInitialized: initialized,
         maaVersion: version || null,
       }),
 
-      // 实例运行时状态
-      instanceConnectionStatus: {},
-      instanceResourceLoaded: {},
-      instanceCurrentTaskId: {},
-      instanceTaskStatus: {},
+    // 实例运行时状态
+    instanceConnectionStatus: {},
+    instanceResourceLoaded: {},
+    instanceCurrentTaskId: {},
+    instanceTaskStatus: {},
 
-      setInstanceConnectionStatus: (instanceId, status) => set((state) => ({
+    setInstanceConnectionStatus: (instanceId, status) =>
+      set((state) => ({
         instanceConnectionStatus: {
           ...state.instanceConnectionStatus,
           [instanceId]: status,
         },
       })),
 
-      setInstanceResourceLoaded: (instanceId, loaded) => set((state) => ({
+    setInstanceResourceLoaded: (instanceId, loaded) =>
+      set((state) => ({
         instanceResourceLoaded: {
           ...state.instanceResourceLoaded,
           [instanceId]: loaded,
         },
       })),
 
-      setInstanceCurrentTaskId: (instanceId, taskId) => set((state) => ({
+    setInstanceCurrentTaskId: (instanceId, taskId) =>
+      set((state) => ({
         instanceCurrentTaskId: {
           ...state.instanceCurrentTaskId,
           [instanceId]: taskId,
         },
       })),
 
-      setInstanceTaskStatus: (instanceId, status) => set((state) => ({
+    setInstanceTaskStatus: (instanceId, status) =>
+      set((state) => ({
         instanceTaskStatus: {
           ...state.instanceTaskStatus,
           [instanceId]: status,
         },
       })),
 
-      // 选中的控制器和资源
-      selectedController: {},
-      selectedResource: {},
+    // 选中的控制器和资源
+    selectedController: {},
+    selectedResource: {},
 
-      setSelectedController: (instanceId, controllerName) => set((state) => ({
+    setSelectedController: (instanceId, controllerName) =>
+      set((state) => ({
         selectedController: {
           ...state.selectedController,
           [instanceId]: controllerName,
         },
         // 同时更新 Instance 中的 controllerName
-        instances: state.instances.map(i =>
-          i.id === instanceId ? { ...i, controllerName } : i
-        ),
+        instances: state.instances.map((i) => (i.id === instanceId ? { ...i, controllerName } : i)),
       })),
 
-      setSelectedResource: (instanceId, resourceName) => set((state) => ({
+    setSelectedResource: (instanceId, resourceName) =>
+      set((state) => ({
         selectedResource: {
           ...state.selectedResource,
           [instanceId]: resourceName,
         },
         // 同时更新 Instance 中的 resourceName
-        instances: state.instances.map(i =>
-          i.id === instanceId ? { ...i, resourceName } : i
-        ),
+        instances: state.instances.map((i) => (i.id === instanceId ? { ...i, resourceName } : i)),
       })),
 
-      // 保存设备信息到实例
-      setInstanceSavedDevice: (instanceId, savedDevice) => set((state) => ({
-        instances: state.instances.map(i =>
-          i.id === instanceId ? { ...i, savedDevice } : i
-        ),
+    // 保存设备信息到实例
+    setInstanceSavedDevice: (instanceId, savedDevice) =>
+      set((state) => ({
+        instances: state.instances.map((i) => (i.id === instanceId ? { ...i, savedDevice } : i)),
       })),
 
-      // 设备列表缓存
-      cachedAdbDevices: [],
-      cachedWin32Windows: [],
-      setCachedAdbDevices: (devices) => set({ cachedAdbDevices: devices }),
-      setCachedWin32Windows: (windows) => set({ cachedWin32Windows: windows }),
+    // 设备列表缓存
+    cachedAdbDevices: [],
+    cachedWin32Windows: [],
+    setCachedAdbDevices: (devices) => set({ cachedAdbDevices: devices }),
+    setCachedWin32Windows: (windows) => set({ cachedWin32Windows: windows }),
 
-      // 从后端恢复 MAA 运行时状态
-      restoreBackendStates: (states) => set((currentState) => {
+    // 从后端恢复 MAA 运行时状态
+    restoreBackendStates: (states) =>
+      set((currentState) => {
         const connectionStatus: Record<string, ConnectionStatus> = {};
         const resourceLoaded: Record<string, boolean> = {};
         const taskStatus: Record<string, TaskStatus | null> = {};
 
         // 更新实例的 isRunning 状态
-        const updatedInstances = currentState.instances.map(instance => {
+        const updatedInstances = currentState.instances.map((instance) => {
           const backendState = states.instances[instance.id];
           if (backendState) {
             // 只有当后端有正在运行的任务时，才恢复 isRunning 状态
@@ -1046,166 +1092,175 @@ export const useAppStore = create<AppState>()(
         };
       }),
 
-      // 截图流状态
-      instanceScreenshotStreaming: {},
-      setInstanceScreenshotStreaming: (instanceId, streaming) => set((state) => ({
+    // 截图流状态
+    instanceScreenshotStreaming: {},
+    setInstanceScreenshotStreaming: (instanceId, streaming) =>
+      set((state) => ({
         instanceScreenshotStreaming: {
           ...state.instanceScreenshotStreaming,
           [instanceId]: streaming,
         },
       })),
 
-      // 右侧面板折叠状态
-      sidePanelExpanded: true,
-      setSidePanelExpanded: (expanded) => set({ sidePanelExpanded: expanded }),
-      toggleSidePanelExpanded: () => set((state) => ({ sidePanelExpanded: !state.sidePanelExpanded })),
+    // 右侧面板折叠状态
+    sidePanelExpanded: true,
+    setSidePanelExpanded: (expanded) => set({ sidePanelExpanded: expanded }),
+    toggleSidePanelExpanded: () =>
+      set((state) => ({ sidePanelExpanded: !state.sidePanelExpanded })),
 
-      // 右侧面板宽度和折叠状态
-      rightPanelWidth: 320,
-      rightPanelCollapsed: false,
-      setRightPanelWidth: (width) => set({ rightPanelWidth: width }),
-      setRightPanelCollapsed: (collapsed) => set({ rightPanelCollapsed: collapsed }),
+    // 右侧面板宽度和折叠状态
+    rightPanelWidth: 320,
+    rightPanelCollapsed: false,
+    setRightPanelWidth: (width) => set({ rightPanelWidth: width }),
+    setRightPanelCollapsed: (collapsed) => set({ rightPanelCollapsed: collapsed }),
 
-      // 卡片展开状态
-      connectionPanelExpanded: true,
-      screenshotPanelExpanded: true,
-      setConnectionPanelExpanded: (expanded) => set({ connectionPanelExpanded: expanded }),
-      setScreenshotPanelExpanded: (expanded) => set({ screenshotPanelExpanded: expanded }),
+    // 卡片展开状态
+    connectionPanelExpanded: true,
+    screenshotPanelExpanded: true,
+    setConnectionPanelExpanded: (expanded) => set({ connectionPanelExpanded: expanded }),
+    setScreenshotPanelExpanded: (expanded) => set({ screenshotPanelExpanded: expanded }),
 
-      // 中控台视图模式
-      dashboardView: false,
-      setDashboardView: (enabled) => set({ dashboardView: enabled }),
-      toggleDashboardView: () => set((state) => ({ dashboardView: !state.dashboardView })),
+    // 中控台视图模式
+    dashboardView: false,
+    setDashboardView: (enabled) => set({ dashboardView: enabled }),
+    toggleDashboardView: () => set((state) => ({ dashboardView: !state.dashboardView })),
 
-      // 窗口大小
-      windowSize: defaultWindowSize,
-      setWindowSize: (size) => set({ windowSize: size }),
+    // 窗口大小
+    windowSize: defaultWindowSize,
+    setWindowSize: (size) => set({ windowSize: size }),
 
-      // MirrorChyan 更新设置
-      mirrorChyanSettings: defaultMirrorChyanSettings,
-      setMirrorChyanCdk: (cdk) => set((state) => ({
+    // MirrorChyan 更新设置
+    mirrorChyanSettings: defaultMirrorChyanSettings,
+    setMirrorChyanCdk: (cdk) =>
+      set((state) => ({
         mirrorChyanSettings: { ...state.mirrorChyanSettings, cdk },
       })),
-      setMirrorChyanChannel: (channel) => set((state) => ({
+    setMirrorChyanChannel: (channel) =>
+      set((state) => ({
         mirrorChyanSettings: { ...state.mirrorChyanSettings, channel },
       })),
 
-      // 任务选项预览显示设置
-      showOptionPreview: true,
-      setShowOptionPreview: (show) => set({ showOptionPreview: show }),
+    // 任务选项预览显示设置
+    showOptionPreview: true,
+    setShowOptionPreview: (show) => set({ showOptionPreview: show }),
 
-      // 实时截图帧率设置
-      screenshotFrameRate: defaultScreenshotFrameRate,
-      setScreenshotFrameRate: (rate) => set({ screenshotFrameRate: rate }),
+    // 实时截图帧率设置
+    screenshotFrameRate: defaultScreenshotFrameRate,
+    setScreenshotFrameRate: (rate) => set({ screenshotFrameRate: rate }),
 
-      // Welcome 弹窗显示记录
-      welcomeShownHash: '',
-      setWelcomeShownHash: (hash) => set({ welcomeShownHash: hash }),
-      
-      // 开发模式
-      devMode: false,
-      setDevMode: (devMode) => set({ devMode }),
-      
-      // 更新检查状态
-      updateInfo: null,
-      updateCheckLoading: false,
-      showUpdateDialog: false,
-      setUpdateInfo: (info) => set({ updateInfo: info }),
-      setUpdateCheckLoading: (loading) => set({ updateCheckLoading: loading }),
-      setShowUpdateDialog: (show) => set({ showUpdateDialog: show }),
+    // Welcome 弹窗显示记录
+    welcomeShownHash: '',
+    setWelcomeShownHash: (hash) => set({ welcomeShownHash: hash }),
 
-      // 下载状态
-      downloadStatus: 'idle',
-      downloadProgress: null,
-      downloadSavePath: null,
-      setDownloadStatus: (status) => set({ downloadStatus: status }),
-      setDownloadProgress: (progress) => set({ downloadProgress: progress }),
-      setDownloadSavePath: (path) => set({ downloadSavePath: path }),
-      resetDownloadState: () => set({
+    // 开发模式
+    devMode: false,
+    setDevMode: (devMode) => set({ devMode }),
+
+    // 更新检查状态
+    updateInfo: null,
+    updateCheckLoading: false,
+    showUpdateDialog: false,
+    setUpdateInfo: (info) => set({ updateInfo: info }),
+    setUpdateCheckLoading: (loading) => set({ updateCheckLoading: loading }),
+    setShowUpdateDialog: (show) => set({ showUpdateDialog: show }),
+
+    // 下载状态
+    downloadStatus: 'idle',
+    downloadProgress: null,
+    downloadSavePath: null,
+    setDownloadStatus: (status) => set({ downloadStatus: status }),
+    setDownloadProgress: (progress) => set({ downloadProgress: progress }),
+    setDownloadSavePath: (path) => set({ downloadSavePath: path }),
+    resetDownloadState: () =>
+      set({
         downloadStatus: 'idle',
         downloadProgress: null,
         downloadSavePath: null,
       }),
 
-      // 安装状态
-      showInstallConfirmModal: false,
-      installStatus: 'idle',
-      installError: null,
-      justUpdatedInfo: null,
-      setShowInstallConfirmModal: (show) => set({
+    // 安装状态
+    showInstallConfirmModal: false,
+    installStatus: 'idle',
+    installError: null,
+    justUpdatedInfo: null,
+    setShowInstallConfirmModal: (show) =>
+      set({
         showInstallConfirmModal: show,
         // 打开模态框时自动关闭更新气泡
         ...(show && { showUpdateDialog: false }),
       }),
-      setInstallStatus: (status) => set({ installStatus: status }),
-      setInstallError: (error) => set({ installError: error }),
-      setJustUpdatedInfo: (info) => set({ justUpdatedInfo: info }),
-      resetInstallState: () => set({
+    setInstallStatus: (status) => set({ installStatus: status }),
+    setInstallError: (error) => set({ installError: error }),
+    setJustUpdatedInfo: (info) => set({ justUpdatedInfo: info }),
+    resetInstallState: () =>
+      set({
         installStatus: 'idle',
         installError: null,
       }),
 
-      // 最近关闭的实例
-      recentlyClosed: [],
+    // 最近关闭的实例
+    recentlyClosed: [],
 
-      reopenRecentlyClosed: (id) => {
-        const state = get();
-        const closedInstance = state.recentlyClosed.find(i => i.id === id);
-        if (!closedInstance) return null;
+    reopenRecentlyClosed: (id) => {
+      const state = get();
+      const closedInstance = state.recentlyClosed.find((i) => i.id === id);
+      if (!closedInstance) return null;
 
-        const newId = generateId();
-        const newInstance: Instance = {
-          id: newId,
-          name: closedInstance.name,
-          controllerId: closedInstance.controllerId,
-          resourceId: closedInstance.resourceId,
-          controllerName: closedInstance.controllerName,
-          resourceName: closedInstance.resourceName,
-          savedDevice: closedInstance.savedDevice,
-          selectedTasks: closedInstance.tasks.map(t => ({
-            id: generateId(),
-            taskName: t.taskName,
-            customName: t.customName,
-            enabled: t.enabled,
-            optionValues: t.optionValues,
-            expanded: false,
-          })),
-          isRunning: false,
-          schedulePolicies: closedInstance.schedulePolicies,
-        };
+      const newId = generateId();
+      const newInstance: Instance = {
+        id: newId,
+        name: closedInstance.name,
+        controllerId: closedInstance.controllerId,
+        resourceId: closedInstance.resourceId,
+        controllerName: closedInstance.controllerName,
+        resourceName: closedInstance.resourceName,
+        savedDevice: closedInstance.savedDevice,
+        selectedTasks: closedInstance.tasks.map((t) => ({
+          id: generateId(),
+          taskName: t.taskName,
+          customName: t.customName,
+          enabled: t.enabled,
+          optionValues: t.optionValues,
+          expanded: false,
+        })),
+        isRunning: false,
+        schedulePolicies: closedInstance.schedulePolicies,
+      };
 
-        // 恢复选中的控制器和资源状态
-        const newSelectedController = { ...state.selectedController };
-        const newSelectedResource = { ...state.selectedResource };
-        if (closedInstance.controllerName) {
-          newSelectedController[newId] = closedInstance.controllerName;
-        }
-        if (closedInstance.resourceName) {
-          newSelectedResource[newId] = closedInstance.resourceName;
-        }
+      // 恢复选中的控制器和资源状态
+      const newSelectedController = { ...state.selectedController };
+      const newSelectedResource = { ...state.selectedResource };
+      if (closedInstance.controllerName) {
+        newSelectedController[newId] = closedInstance.controllerName;
+      }
+      if (closedInstance.resourceName) {
+        newSelectedResource[newId] = closedInstance.resourceName;
+      }
 
-        set({
-          instances: [...state.instances, newInstance],
-          activeInstanceId: newId,
-          recentlyClosed: state.recentlyClosed.filter(i => i.id !== id),
-          selectedController: newSelectedController,
-          selectedResource: newSelectedResource,
-        });
+      set({
+        instances: [...state.instances, newInstance],
+        activeInstanceId: newId,
+        recentlyClosed: state.recentlyClosed.filter((i) => i.id !== id),
+        selectedController: newSelectedController,
+        selectedResource: newSelectedResource,
+      });
 
-        return newId;
-      },
+      return newId;
+    },
 
-      removeFromRecentlyClosed: (id) => set((state) => ({
-        recentlyClosed: state.recentlyClosed.filter(i => i.id !== id),
+    removeFromRecentlyClosed: (id) =>
+      set((state) => ({
+        recentlyClosed: state.recentlyClosed.filter((i) => i.id !== id),
       })),
 
-      clearRecentlyClosed: () => set({ recentlyClosed: [] }),
+    clearRecentlyClosed: () => set({ recentlyClosed: [] }),
 
-      // 任务运行状态
-      instanceTaskRunStatus: {},
-      maaTaskIdMapping: {},
+    // 任务运行状态
+    instanceTaskRunStatus: {},
+    maaTaskIdMapping: {},
 
-      setTaskRunStatus: (instanceId, selectedTaskId, status) => set((state) => ({
+    setTaskRunStatus: (instanceId, selectedTaskId, status) =>
+      set((state) => ({
         instanceTaskRunStatus: {
           ...state.instanceTaskRunStatus,
           [instanceId]: {
@@ -1215,9 +1270,10 @@ export const useAppStore = create<AppState>()(
         },
       })),
 
-      setAllTasksRunStatus: (instanceId, taskIds, status) => set((state) => {
+    setAllTasksRunStatus: (instanceId, taskIds, status) =>
+      set((state) => {
         const taskStatus: Record<string, TaskRunStatus> = {};
-        taskIds.forEach(id => {
+        taskIds.forEach((id) => {
           taskStatus[id] = status;
         });
         return {
@@ -1228,7 +1284,8 @@ export const useAppStore = create<AppState>()(
         };
       }),
 
-      registerMaaTaskMapping: (instanceId, maaTaskId, selectedTaskId) => set((state) => ({
+    registerMaaTaskMapping: (instanceId, maaTaskId, selectedTaskId) =>
+      set((state) => ({
         maaTaskIdMapping: {
           ...state.maaTaskIdMapping,
           [instanceId]: {
@@ -1238,26 +1295,27 @@ export const useAppStore = create<AppState>()(
         },
       })),
 
-      findSelectedTaskIdByMaaTaskId: (instanceId, maaTaskId) => {
-        const state = get();
-        const mapping = state.maaTaskIdMapping[instanceId];
-        return mapping?.[maaTaskId] || null;
-      },
+    findSelectedTaskIdByMaaTaskId: (instanceId, maaTaskId) => {
+      const state = get();
+      const mapping = state.maaTaskIdMapping[instanceId];
+      return mapping?.[maaTaskId] || null;
+    },
 
-      findMaaTaskIdBySelectedTaskId: (instanceId, selectedTaskId) => {
-        const state = get();
-        const mapping = state.maaTaskIdMapping[instanceId];
-        if (!mapping) return null;
-        // 反向查找：遍历 mapping 找到 value 等于 selectedTaskId 的 key
-        for (const [maaTaskIdStr, taskId] of Object.entries(mapping)) {
-          if (taskId === selectedTaskId) {
-            return parseInt(maaTaskIdStr, 10);
-          }
+    findMaaTaskIdBySelectedTaskId: (instanceId, selectedTaskId) => {
+      const state = get();
+      const mapping = state.maaTaskIdMapping[instanceId];
+      if (!mapping) return null;
+      // 反向查找：遍历 mapping 找到 value 等于 selectedTaskId 的 key
+      for (const [maaTaskIdStr, taskId] of Object.entries(mapping)) {
+        if (taskId === selectedTaskId) {
+          return parseInt(maaTaskIdStr, 10);
         }
-        return null;
-      },
+      }
+      return null;
+    },
 
-      clearTaskRunStatus: (instanceId) => set((state) => ({
+    clearTaskRunStatus: (instanceId) =>
+      set((state) => ({
         instanceTaskRunStatus: {
           ...state.instanceTaskRunStatus,
           [instanceId]: {},
@@ -1268,39 +1326,44 @@ export const useAppStore = create<AppState>()(
         },
       })),
 
-      // 运行中任务队列管理
-      instancePendingTaskIds: {},
-      instanceCurrentTaskIndex: {},
+    // 运行中任务队列管理
+    instancePendingTaskIds: {},
+    instanceCurrentTaskIndex: {},
 
-      setPendingTaskIds: (instanceId, taskIds) => set((state) => ({
+    setPendingTaskIds: (instanceId, taskIds) =>
+      set((state) => ({
         instancePendingTaskIds: {
           ...state.instancePendingTaskIds,
           [instanceId]: taskIds,
         },
       })),
 
-      appendPendingTaskId: (instanceId, taskId) => set((state) => ({
+    appendPendingTaskId: (instanceId, taskId) =>
+      set((state) => ({
         instancePendingTaskIds: {
           ...state.instancePendingTaskIds,
           [instanceId]: [...(state.instancePendingTaskIds[instanceId] || []), taskId],
         },
       })),
 
-      setCurrentTaskIndex: (instanceId, index) => set((state) => ({
+    setCurrentTaskIndex: (instanceId, index) =>
+      set((state) => ({
         instanceCurrentTaskIndex: {
           ...state.instanceCurrentTaskIndex,
           [instanceId]: index,
         },
       })),
 
-      advanceCurrentTaskIndex: (instanceId) => set((state) => ({
+    advanceCurrentTaskIndex: (instanceId) =>
+      set((state) => ({
         instanceCurrentTaskIndex: {
           ...state.instanceCurrentTaskIndex,
           [instanceId]: (state.instanceCurrentTaskIndex[instanceId] || 0) + 1,
         },
       })),
 
-      clearPendingTasks: (instanceId) => set((state) => ({
+    clearPendingTasks: (instanceId) =>
+      set((state) => ({
         instancePendingTaskIds: {
           ...state.instancePendingTaskIds,
           [instanceId]: [],
@@ -1311,27 +1374,30 @@ export const useAppStore = create<AppState>()(
         },
       })),
 
-      // 定时执行状态
-      scheduleExecutions: {},
+    // 定时执行状态
+    scheduleExecutions: {},
 
-      setScheduleExecution: (instanceId, info) => set((state) => ({
+    setScheduleExecution: (instanceId, info) =>
+      set((state) => ({
         scheduleExecutions: info
           ? { ...state.scheduleExecutions, [instanceId]: info }
           : Object.fromEntries(
-            Object.entries(state.scheduleExecutions).filter(([id]) => id !== instanceId)
-          ),
+              Object.entries(state.scheduleExecutions).filter(([id]) => id !== instanceId),
+            ),
       })),
 
-      clearScheduleExecution: (instanceId) => set((state) => ({
+    clearScheduleExecution: (instanceId) =>
+      set((state) => ({
         scheduleExecutions: Object.fromEntries(
-          Object.entries(state.scheduleExecutions).filter(([id]) => id !== instanceId)
+          Object.entries(state.scheduleExecutions).filter(([id]) => id !== instanceId),
         ),
       })),
 
-      // 日志管理
-      instanceLogs: {},
+    // 日志管理
+    instanceLogs: {},
 
-      addLog: (instanceId, log) => set((state) => {
+    addLog: (instanceId, log) =>
+      set((state) => {
         const logs = state.instanceLogs[instanceId] || [];
         const newLog: LogEntry = {
           id: generateId(),
@@ -1348,41 +1414,45 @@ export const useAppStore = create<AppState>()(
         };
       }),
 
-      clearLogs: (instanceId) => set((state) => ({
+    clearLogs: (instanceId) =>
+      set((state) => ({
         instanceLogs: {
           ...state.instanceLogs,
           [instanceId]: [],
         },
       })),
 
-      // 回调 ID 与名称的映射
-      ctrlIdToName: {},
-      resIdToName: {},
-      taskIdToName: {},
-      entryToTaskName: {},
+    // 回调 ID 与名称的映射
+    ctrlIdToName: {},
+    resIdToName: {},
+    taskIdToName: {},
+    entryToTaskName: {},
 
-      registerCtrlIdName: (ctrlId, name) => set((state) => ({
+    registerCtrlIdName: (ctrlId, name) =>
+      set((state) => ({
         ctrlIdToName: { ...state.ctrlIdToName, [ctrlId]: name },
       })),
 
-      registerResIdName: (resId, name) => set((state) => ({
+    registerResIdName: (resId, name) =>
+      set((state) => ({
         resIdToName: { ...state.resIdToName, [resId]: name },
       })),
 
-      registerTaskIdName: (taskId, name) => set((state) => ({
+    registerTaskIdName: (taskId, name) =>
+      set((state) => ({
         taskIdToName: { ...state.taskIdToName, [taskId]: name },
       })),
 
-      registerEntryTaskName: (entry, name) => set((state) => ({
+    registerEntryTaskName: (entry, name) =>
+      set((state) => ({
         entryToTaskName: { ...state.entryToTaskName, [entry]: name },
       })),
 
-      getCtrlName: (ctrlId) => get().ctrlIdToName[ctrlId],
-      getResName: (resId) => get().resIdToName[resId],
-      getTaskName: (taskId) => get().taskIdToName[taskId],
-      getTaskNameByEntry: (entry) => get().entryToTaskName[entry],
-    })
-  )
+    getCtrlName: (ctrlId) => get().ctrlIdToName[ctrlId],
+    getResName: (resId) => get().resIdToName[resId],
+    getTaskName: (taskId) => get().taskIdToName[taskId],
+    getTaskNameByEntry: (entry) => get().entryToTaskName[entry],
+  })),
 );
 
 // 生成配置用于保存
@@ -1390,7 +1460,7 @@ function generateConfig(): MxuConfig {
   const state = useAppStore.getState();
   return {
     version: '1.0',
-    instances: state.instances.map(inst => ({
+    instances: state.instances.map((inst) => ({
       id: inst.id,
       name: inst.name,
       controllerId: inst.controllerId,
@@ -1398,7 +1468,7 @@ function generateConfig(): MxuConfig {
       controllerName: inst.controllerName,
       resourceName: inst.resourceName,
       savedDevice: inst.savedDevice,
-      tasks: inst.selectedTasks.map(t => ({
+      tasks: inst.selectedTasks.map((t) => ({
         id: t.id,
         taskName: t.taskName,
         customName: t.customName,
@@ -1464,5 +1534,5 @@ useAppStore.subscribe(
   () => {
     debouncedSaveConfig();
   },
-  { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
+  { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
 );

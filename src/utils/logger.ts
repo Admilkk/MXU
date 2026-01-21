@@ -23,14 +23,14 @@ let logsDir: string | null = null;
  */
 async function initFileLogger(): Promise<void> {
   if (!isTauri() || logsDir) return;
-  
+
   try {
     const { invoke } = await import('@tauri-apps/api/core');
     const exeDir = await invoke<string>('get_exe_dir');
     logsDir = `${exeDir.replace(/\\/g, '/').replace(/\/$/, '')}/debug`;
-    
+
     const { mkdir, exists } = await import('@tauri-apps/plugin-fs');
-    if (!await exists(logsDir)) {
+    if (!(await exists(logsDir))) {
       await mkdir(logsDir, { recursive: true });
     }
     console.log('[Logger] File logger initialized, logs dir:', logsDir);
@@ -50,11 +50,11 @@ if (isTauri()) {
  */
 async function writeLogToFile(line: string): Promise<void> {
   if (!logsDir) return;
-  
+
   // 日志文件名：mxu-web-YYYY-MM-DD.log
   const today = new Date().toISOString().slice(0, 10);
   const logFile = `${logsDir}/mxu-web-${today}.log`;
-  
+
   try {
     const { writeTextFile } = await import('@tauri-apps/plugin-fs');
     await writeTextFile(logFile, line + '\n', { append: true });
@@ -82,15 +82,15 @@ log.methodFactory = function (methodName, logLevel, loggerName) {
     });
     const prefix = loggerName ? `[${timestamp}][${String(loggerName)}]` : `[${timestamp}]`;
     rawMethod(prefix, ...args);
-    
+
     // 写入文件日志
     if (logsDir) {
       const fullTimestamp = now.toISOString().replace('T', ' ').slice(0, 19);
       const level = methodName.toUpperCase().padEnd(5);
       const module = loggerName ? `[${String(loggerName)}]` : '';
-      const message = args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' ');
+      const message = args
+        .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+        .join(' ');
       writeLogToFile(`${fullTimestamp} ${level} ${module} ${message}`);
     }
   };
@@ -121,15 +121,15 @@ export function createLogger(moduleName: string, level?: LogLevel) {
       });
       const prefix = `[${timestamp}][${String(loggerName)}]`;
       rawMethod(prefix, ...args);
-      
+
       // 写入文件日志
       if (logsDir) {
         const fullTimestamp = now.toISOString().replace('T', ' ').slice(0, 19);
         const level = methodName.toUpperCase().padEnd(5);
         const module = loggerName ? `[${String(loggerName)}]` : '';
-        const message = args.map(arg => 
-          typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-        ).join(' ');
+        const message = args
+          .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+          .join(' ');
         writeLogToFile(`${fullTimestamp} ${level} ${module} ${message}`);
       }
     };

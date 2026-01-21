@@ -104,7 +104,7 @@ export default {
     no: '否',
     invalidInput: '输入格式不正确',
   },
-  
+
   // 选项编辑器
   optionEditor: {
     loadingDescription: '加载描述中...',
@@ -304,7 +304,8 @@ export default {
     cdk: 'Mirror酱 CDK',
     cdkPlaceholder: '输入您的 CDK（可选）',
     serviceName: 'Mirror酱',
-    cdkHintAfterLink: ' 是独立的第三方加速下载服务，需要付费使用，并非「{{projectName}}」收费。其运营成本由订阅收入支撑，部分收益将回馈项目开发者。欢迎订阅 CDK 享受高速下载，同时支持项目持续开发。未填写 CDK 时将自动通过 GitHub 下载，若失败请尝试配置网络代理。',
+    cdkHintAfterLink:
+      ' 是独立的第三方加速下载服务，需要付费使用，并非「{{projectName}}」收费。其运营成本由订阅收入支撑，部分收益将回馈项目开发者。欢迎订阅 CDK 享受高速下载，同时支持项目持续开发。未填写 CDK 时将自动通过 GitHub 下载，若失败请尝试配置网络代理。',
     getCdk: '没有CDK？立即订阅',
     cdkHint: '请检查您的 CDK 是否正确或已过期',
     checkUpdate: '检查更新',
@@ -424,7 +425,7 @@ export default {
     closeOtherTabs: '关闭其他标签页',
     closeAllTabs: '关闭所有标签页',
     closeTabsToRight: '关闭右侧标签页',
-    
+
     // 任务右键菜单
     addTask: '添加任务',
     duplicateTask: '复制任务',
@@ -442,7 +443,7 @@ export default {
     deselectAll: '取消全选',
     expandAllTasks: '展开全部',
     collapseAllTasks: '折叠全部',
-    
+
     // 截图面板右键菜单
     reconnect: '重新连接',
     forceRefresh: '强制刷新',
@@ -451,11 +452,11 @@ export default {
     fullscreen: '全屏显示',
     saveScreenshot: '保存截图',
     copyScreenshot: '复制截图',
-    
+
     // 连接面板右键菜单
     refreshDevices: '刷新设备列表',
     disconnect: '断开连接',
-    
+
     // 通用
     openFolder: '打开所在文件夹',
   },
@@ -463,7 +464,8 @@ export default {
   // 版本警告
   versionWarning: {
     title: 'MaaFramework 版本过低',
-    message: '当前 MaaFramework 版本 ({{current}}) 低于最低支持版本 ({{minimum}})，部分功能可能无法正常工作。',
+    message:
+      '当前 MaaFramework 版本 ({{current}}) 低于最低支持版本 ({{minimum}})，部分功能可能无法正常工作。',
     suggestion: '请联系项目开发者更新 MaaFramework 版本。',
     understand: '我已了解',
   },

@@ -13,8 +13,8 @@ const isTauri = () => {
 export function LogsPanel() {
   const { t } = useTranslation();
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const { 
-    sidePanelExpanded, 
+  const {
+    sidePanelExpanded,
     toggleSidePanelExpanded,
     activeInstanceId,
     instanceLogs,
@@ -24,7 +24,7 @@ export function LogsPanel() {
   const { state: menuState, show: showMenu, hide: hideMenu } = useContextMenu();
 
   // 获取当前实例的日志
-  const logs = activeInstanceId ? (instanceLogs[activeInstanceId] || []) : [];
+  const logs = activeInstanceId ? instanceLogs[activeInstanceId] || [] : [];
 
   useEffect(() => {
     if (logsEndRef.current) {
@@ -119,7 +119,17 @@ export function LogsPanel() {
 
       showMenu(e, menuItems);
     },
-    [t, logs.length, sidePanelExpanded, basePath, handleOpenLogDir, handleCopyAll, handleClear, toggleSidePanelExpanded, showMenu]
+    [
+      t,
+      logs.length,
+      sidePanelExpanded,
+      basePath,
+      handleOpenLogDir,
+      handleCopyAll,
+      handleClear,
+      toggleSidePanelExpanded,
+      showMenu,
+    ],
   );
 
   // 根据日志类型获取前缀标签
@@ -138,9 +148,7 @@ export function LogsPanel() {
     <div className="flex-1 flex flex-col bg-bg-secondary rounded-lg border border-border overflow-hidden">
       {/* 标题栏 */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <span className="text-sm font-medium text-text-primary">
-          {t('logs.title')}
-        </span>
+        <span className="text-sm font-medium text-text-primary">{t('logs.title')}</span>
         <div className="flex items-center gap-1">
           {/* 展开/折叠上方面板 */}
           <button
@@ -149,7 +157,7 @@ export function LogsPanel() {
               'p-1.5 rounded-md transition-colors',
               !sidePanelExpanded
                 ? 'text-accent bg-accent-light'
-                : 'text-text-secondary hover:bg-bg-hover'
+                : 'text-text-secondary hover:bg-bg-hover',
             )}
             title={sidePanelExpanded ? t('logs.collapse') : t('logs.expand')}
           >
@@ -167,7 +175,7 @@ export function LogsPanel() {
               'p-1.5 rounded-md transition-colors',
               !isTauri() || !basePath
                 ? 'text-text-muted cursor-not-allowed'
-                : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
             )}
             title={t('settings.openLogDir')}
           >
@@ -181,7 +189,7 @@ export function LogsPanel() {
               'p-1.5 rounded-md transition-colors',
               logs.length === 0
                 ? 'text-text-muted cursor-not-allowed'
-                : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
             )}
             title={t('logs.clear')}
           >
@@ -202,10 +210,7 @@ export function LogsPanel() {
         ) : (
           <>
             {logs.map((log) => (
-              <div
-                key={log.id}
-                className={clsx('py-0.5 flex gap-2', getLogColor(log.type))}
-              >
+              <div key={log.id} className={clsx('py-0.5 flex gap-2', getLogColor(log.type))}>
                 <span className="text-text-muted flex-shrink-0">
                   [{log.timestamp.toLocaleTimeString()}]
                 </span>
@@ -222,11 +227,7 @@ export function LogsPanel() {
 
       {/* 右键菜单 */}
       {menuState.isOpen && (
-        <ContextMenu
-          items={menuState.items}
-          position={menuState.position}
-          onClose={hideMenu}
-        />
+        <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
       )}
     </div>
   );

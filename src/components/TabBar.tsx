@@ -1,6 +1,25 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, X, Settings, Sun, Moon, Check, LayoutGrid, Copy, Edit3, XCircle, GripVertical, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, PanelRightClose, Bell, History } from 'lucide-react';
+import {
+  Plus,
+  X,
+  Settings,
+  Sun,
+  Moon,
+  Check,
+  LayoutGrid,
+  Copy,
+  Edit3,
+  XCircle,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  PanelRightClose,
+  Bell,
+  History,
+} from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { ContextMenu, useContextMenu, type MenuItem } from './ContextMenu';
 import { UpdatePanel } from './UpdatePanel';
@@ -21,7 +40,7 @@ export function TabBar() {
   const tabRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const bellButtonRef = useRef<HTMLButtonElement>(null);
   const recentlyClosedButtonRef = useRef<HTMLButtonElement>(null);
-  
+
   const {
     instances,
     activeInstanceId,
@@ -45,11 +64,11 @@ export function TabBar() {
     showUpdateDialog,
     setShowUpdateDialog,
   } = useAppStore();
-  
+
   // 使用全局状态控制更新面板显示
   const showUpdatePanel = showUpdateDialog;
   const setShowUpdatePanel = setShowUpdateDialog;
-  
+
   const { state: menuState, show: showMenu, hide: hideMenu } = useContextMenu();
 
   // 当最近关闭列表为空时，自动关闭面板
@@ -106,10 +125,10 @@ export function TabBar() {
   // 右键菜单处理
   const handleTabContextMenu = useCallback(
     (e: React.MouseEvent, instanceId: string, instanceName: string) => {
-      const instanceIndex = instances.findIndex(i => i.id === instanceId);
+      const instanceIndex = instances.findIndex((i) => i.id === instanceId);
       const isFirst = instanceIndex === 0;
       const isLast = instanceIndex === instances.length - 1;
-      
+
       const menuItems: MenuItem[] = [
         {
           id: 'new',
@@ -175,7 +194,7 @@ export function TabBar() {
           icon: XCircle,
           disabled: instances.length <= 1,
           onClick: () => {
-            instances.forEach(inst => {
+            instances.forEach((inst) => {
               if (inst.id !== instanceId) {
                 removeInstance(inst.id);
               }
@@ -188,7 +207,7 @@ export function TabBar() {
           icon: PanelRightClose,
           disabled: instanceIndex >= instances.length - 1,
           onClick: () => {
-            instances.slice(instanceIndex + 1).forEach(inst => {
+            instances.slice(instanceIndex + 1).forEach((inst) => {
               removeInstance(inst.id);
             });
           },
@@ -197,37 +216,40 @@ export function TabBar() {
 
       showMenu(e, menuItems);
     },
-    [instances, t, createInstance, duplicateInstance, removeInstance, reorderInstances, showMenu]
+    [instances, t, createInstance, duplicateInstance, removeInstance, reorderInstances, showMenu],
   );
 
   // 基于鼠标事件的拖拽实现（更可靠，兼容 Tauri）
   const handleMouseDown = useCallback((e: React.MouseEvent, index: number) => {
     // 只响应拖拽手柄的点击
     if (!(e.target as HTMLElement).closest('.drag-handle')) return;
-    
+
     e.preventDefault();
     setDragState({ isDragging: true, draggedIndex: index, dragOverIndex: null });
   }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!dragState.isDragging) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!dragState.isDragging) return;
 
-    // 找出鼠标当前位置对应的标签索引
-    let newDragOverIndex: number | null = null;
-    tabRefs.current.forEach((el, id) => {
-      const rect = el.getBoundingClientRect();
-      if (e.clientX >= rect.left && e.clientX <= rect.right) {
-        const idx = instances.findIndex(inst => inst.id === id);
-        if (idx !== -1 && idx !== dragState.draggedIndex) {
-          newDragOverIndex = idx;
+      // 找出鼠标当前位置对应的标签索引
+      let newDragOverIndex: number | null = null;
+      tabRefs.current.forEach((el, id) => {
+        const rect = el.getBoundingClientRect();
+        if (e.clientX >= rect.left && e.clientX <= rect.right) {
+          const idx = instances.findIndex((inst) => inst.id === id);
+          if (idx !== -1 && idx !== dragState.draggedIndex) {
+            newDragOverIndex = idx;
+          }
         }
-      }
-    });
+      });
 
-    if (newDragOverIndex !== dragState.dragOverIndex) {
-      setDragState(prev => ({ ...prev, dragOverIndex: newDragOverIndex }));
-    }
-  }, [dragState.isDragging, dragState.draggedIndex, dragState.dragOverIndex, instances]);
+      if (newDragOverIndex !== dragState.dragOverIndex) {
+        setDragState((prev) => ({ ...prev, dragOverIndex: newDragOverIndex }));
+      }
+    },
+    [dragState.isDragging, dragState.draggedIndex, dragState.dragOverIndex, instances],
+  );
 
   const handleMouseUp = useCallback(() => {
     if (!dragState.isDragging) return;
@@ -271,19 +293,21 @@ export function TabBar() {
                 ? 'bg-bg-primary text-accent border-b-2 border-b-accent'
                 : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover border-b-2 border-b-transparent',
               dragState.isDragging && dragState.draggedIndex === index && 'opacity-50 bg-accent/10',
-              dragState.isDragging && dragState.dragOverIndex === index && 'border-l-2 border-l-accent'
+              dragState.isDragging &&
+                dragState.dragOverIndex === index &&
+                'border-l-2 border-l-accent',
             )}
           >
             {/* 拖拽手柄 - 仅多标签时显示 */}
             {instances.length > 1 && editingId !== instance.id && (
-              <div 
+              <div
                 className="drag-handle p-0.5 cursor-grab opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
                 title={t('titleBar.dragToReorder')}
               >
                 <GripVertical className="w-3 h-3" />
               </div>
             )}
-            
+
             {editingId === instance.id ? (
               <div className="flex-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                 <input
@@ -296,7 +320,7 @@ export function TabBar() {
                   className={clsx(
                     'flex-1 w-full px-1 py-0.5 text-sm rounded border border-accent',
                     'bg-bg-primary text-text-primary',
-                    'focus:outline-none'
+                    'focus:outline-none',
                   )}
                 />
                 <button
@@ -330,7 +354,7 @@ export function TabBar() {
                     onClick={(e) => handleCloseTab(e, instance.id)}
                     className={clsx(
                       'p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity',
-                      'hover:bg-bg-active'
+                      'hover:bg-bg-active',
                     )}
                     title={t('titleBar.closeTab')}
                   >
@@ -341,7 +365,7 @@ export function TabBar() {
             )}
           </div>
         ))}
-        
+
         {/* 新建标签按钮 */}
         <button
           onClick={handleNewTab}
@@ -354,9 +378,7 @@ export function TabBar() {
 
       {/* 项目名称（根据协议，label 是 UI 显示名称，title 是窗口标题） */}
       <div className="px-4 text-sm font-medium text-text-secondary">
-        {resolveI18nText(projectInterface?.label, langKey) || 
-         projectInterface?.name || 
-         'MXU'}
+        {resolveI18nText(projectInterface?.label, langKey) || projectInterface?.name || 'MXU'}
       </div>
 
       {/* 工具按钮 */}
@@ -368,14 +390,13 @@ export function TabBar() {
             onClick={() => setShowUpdatePanel(!showUpdatePanel)}
             className={clsx(
               'relative p-2 rounded-md transition-colors',
-              showUpdatePanel ? 'bg-accent/10' : 'hover:bg-bg-hover'
+              showUpdatePanel ? 'bg-accent/10' : 'hover:bg-bg-hover',
             )}
             title={t('mirrorChyan.newVersion')}
           >
-            <Bell className={clsx(
-              'w-4 h-4 text-accent',
-              !showUpdatePanel && 'animate-bell-shake'
-            )} />
+            <Bell
+              className={clsx('w-4 h-4 text-accent', !showUpdatePanel && 'animate-bell-shake')}
+            />
             {!showUpdatePanel && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full animate-pulse" />
             )}
@@ -390,7 +411,7 @@ export function TabBar() {
               'p-2 rounded-md transition-colors',
               showRecentlyClosedPanel
                 ? 'bg-accent/10 text-accent'
-                : 'hover:bg-bg-hover text-text-secondary'
+                : 'hover:bg-bg-hover text-text-secondary',
             )}
             title={t('recentlyClosed.title')}
           >
@@ -401,9 +422,7 @@ export function TabBar() {
           onClick={toggleDashboardView}
           className={clsx(
             'p-2 rounded-md transition-colors',
-            dashboardView
-              ? 'bg-accent/10 text-accent'
-              : 'hover:bg-bg-hover text-text-secondary'
+            dashboardView ? 'bg-accent/10 text-accent' : 'hover:bg-bg-hover text-text-secondary',
           )}
           title={t('dashboard.toggle')}
         >
@@ -431,19 +450,12 @@ export function TabBar() {
 
       {/* 右键菜单 */}
       {menuState.isOpen && (
-        <ContextMenu
-          items={menuState.items}
-          position={menuState.position}
-          onClose={hideMenu}
-        />
+        <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
       )}
 
       {/* 更新面板 */}
       {showUpdatePanel && (
-        <UpdatePanel
-          onClose={() => setShowUpdatePanel(false)}
-          anchorRef={bellButtonRef}
-        />
+        <UpdatePanel onClose={() => setShowUpdatePanel(false)} anchorRef={bellButtonRef} />
       )}
 
       {/* 最近关闭面板 */}

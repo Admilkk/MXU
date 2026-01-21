@@ -80,7 +80,7 @@ pub fn run() {
             // 创建 MaaState 并注册为 Tauri 管理状态
             let maa_state = Arc::new(MaaState::default());
             app.manage(maa_state);
-            
+
             // 存储 AppHandle 供 MaaFramework 回调使用（发送事件到前端）
             maa_ffi::set_app_handle(app.handle().clone());
 
@@ -94,7 +94,11 @@ pub fn run() {
                             if failed == 0 {
                                 log::info!("Cleaned up cache/old: {} items deleted", deleted);
                             } else {
-                                log::warn!("Cleaned up cache/old: {} deleted, {} failed", deleted, failed);
+                                log::warn!(
+                                    "Cleaned up cache/old: {} deleted, {} failed",
+                                    deleted,
+                                    failed
+                                );
                             }
                         }
                     });

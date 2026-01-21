@@ -19,8 +19,8 @@ use crate::maa_ffi::{
     init_maa_library, to_cstring, MaaAgentClient, MaaController, MaaImageBuffer, MaaLibrary,
     MaaResource, MaaTasker, MaaToolkitAdbDeviceList, MaaToolkitDesktopWindowList, SendPtr,
     MAA_CTRL_OPTION_SCREENSHOT_TARGET_SHORT_SIDE, MAA_GAMEPAD_TYPE_DUALSHOCK4,
-    MAA_GAMEPAD_TYPE_XBOX360, MAA_INVALID_ID, MAA_LIBRARY, MAA_STATUS_PENDING,
-    MAA_STATUS_RUNNING, MAA_STATUS_SUCCEEDED, MAA_WIN32_SCREENCAP_DXGI_DESKTOPDUP,
+    MAA_GAMEPAD_TYPE_XBOX360, MAA_INVALID_ID, MAA_LIBRARY, MAA_STATUS_PENDING, MAA_STATUS_RUNNING,
+    MAA_STATUS_SUCCEEDED, MAA_WIN32_SCREENCAP_DXGI_DESKTOPDUP,
 };
 
 // ============================================================================
@@ -31,10 +31,10 @@ use crate::maa_ffi::{
 /// 使用 Path::components() 解析，不需要路径实际存在
 fn normalize_path(path: &str) -> PathBuf {
     use std::path::{Component, Path};
-    
+
     let path = Path::new(path);
     let mut components = Vec::new();
-    
+
     for component in path.components() {
         match component {
             // 跳过当前目录标记 "."
@@ -51,7 +51,7 @@ fn normalize_path(path: &str) -> PathBuf {
             _ => components.push(component),
         }
     }
-    
+
     // 重建路径
     components.iter().collect()
 }
@@ -59,9 +59,7 @@ fn normalize_path(path: &str) -> PathBuf {
 /// 获取 exe 所在目录下的 debug/logs 子目录
 fn get_logs_dir() -> PathBuf {
     let exe_path = std::env::current_exe().unwrap_or_default();
-    let exe_dir = exe_path
-        .parent()
-        .unwrap_or(std::path::Path::new("."));
+    let exe_dir = exe_path.parent().unwrap_or(std::path::Path::new("."));
     exe_dir.join("debug")
 }
 
@@ -117,8 +115,8 @@ pub enum ControllerConfig {
     Adb {
         adb_path: String,
         address: String,
-        screencap_methods: String,  // u64 作为字符串传递，避免 JS 精度丢失
-        input_methods: String,       // u64 作为字符串传递
+        screencap_methods: String, // u64 作为字符串传递，避免 JS 精度丢失
+        input_methods: String,     // u64 作为字符串传递
         config: String,
     },
     Win32 {
@@ -267,11 +265,12 @@ impl Default for MaaState {
 
 /// 获取可执行文件所在目录下的 maafw 子目录
 pub fn get_maafw_dir() -> Result<PathBuf, String> {
-    let exe_path = std::env::current_exe()
-        .map_err(|e| format!("Failed to get executable path: {}", e))?;
-    let exe_dir = exe_path.parent()
+    let exe_path =
+        std::env::current_exe().map_err(|e| format!("Failed to get executable path: {}", e))?;
+    let exe_dir = exe_path
+        .parent()
         .ok_or_else(|| "Failed to get executable directory".to_string())?;
-    
+
     // macOS app bundle 需要特殊处理：exe 在 Contents/MacOS 下，maafw 应在 Contents/Resources 下
     #[cfg(target_os = "macos")]
     {
@@ -282,7 +281,7 @@ pub fn get_maafw_dir() -> Result<PathBuf, String> {
             }
         }
     }
-    
+
     Ok(exe_dir.join("maafw"))
 }
 
@@ -322,8 +321,14 @@ pub fn maa_init(state: State<Arc<MaaState>>, lib_dir: Option<String>) -> Result<
 
 /// 设置资源目录
 #[tauri::command]
-pub fn maa_set_resource_dir(state: State<Arc<MaaState>>, resource_dir: String) -> Result<(), String> {
-    info!("maa_set_resource_dir called, resource_dir: {}", resource_dir);
+pub fn maa_set_resource_dir(
+    state: State<Arc<MaaState>>,
+    resource_dir: String,
+) -> Result<(), String> {
+    info!(
+        "maa_set_resource_dir called, resource_dir: {}",
+        resource_dir
+    );
     *state.resource_dir.lock().map_err(|e| e.to_string())? = Some(PathBuf::from(&resource_dir));
     info!("maa_set_resource_dir success");
     Ok(())
@@ -357,27 +362,29 @@ pub struct VersionCheckResult {
 #[tauri::command]
 pub fn maa_check_version(state: State<Arc<MaaState>>) -> Result<VersionCheckResult, String> {
     debug!("maa_check_version called");
-    
+
     // 获取 lib_dir
-    let lib_dir = state.lib_dir.lock()
+    let lib_dir = state
+        .lib_dir
+        .lock()
         .map_err(|e| e.to_string())?
         .clone()
         .ok_or_else(|| "lib_dir not set".to_string())?;
-    
+
     // 使用独立的版本获取函数，不依赖完整库加载
     let current_str = get_maa_version_standalone(&lib_dir)
         .ok_or_else(|| "Failed to get MaaFramework version".to_string())?;
-    
+
     // 去掉版本号前缀 'v'（如 "v5.5.0-beta.1" -> "5.5.0-beta.1"）
     let current_clean = current_str.trim_start_matches('v');
     let min_clean = MIN_MAAFW_VERSION.trim_start_matches('v');
-    
+
     // 解析最小版本（这个应该总是成功的）
     let minimum = semver::Version::parse(min_clean).map_err(|e| {
         error!("Failed to parse minimum version '{}': {}", min_clean, e);
         format!("Failed to parse minimum version '{}': {}", min_clean, e)
     })?;
-    
+
     // 尝试解析当前版本，如果解析失败（如 "DEBUG_VERSION"），视为不兼容
     let is_compatible = match semver::Version::parse(current_clean) {
         Ok(current) => {
@@ -397,7 +404,7 @@ pub fn maa_check_version(state: State<Arc<MaaState>>) -> Result<VersionCheckResu
             false
         }
     };
-    
+
     Ok(VersionCheckResult {
         current: current_str,
         minimum: format!("v{}", MIN_MAAFW_VERSION),
@@ -558,7 +565,9 @@ pub fn maa_find_win32_windows(
 
             // 编译正则表达式
             let class_re = class_regex.as_ref().and_then(|r| regex::Regex::new(r).ok());
-            let window_re = window_regex.as_ref().and_then(|r| regex::Regex::new(r).ok());
+            let window_re = window_regex
+                .as_ref()
+                .and_then(|r| regex::Regex::new(r).ok());
 
             for i in 0..size {
                 let window = (lib.maa_toolkit_desktop_window_list_at)(list, i);
@@ -567,7 +576,8 @@ pub fn maa_find_win32_windows(
                 }
 
                 let class_name = from_cstr((lib.maa_toolkit_desktop_window_get_class_name)(window));
-                let window_name = from_cstr((lib.maa_toolkit_desktop_window_get_window_name)(window));
+                let window_name =
+                    from_cstr((lib.maa_toolkit_desktop_window_get_window_name)(window));
 
                 // 过滤
                 if let Some(re) = &class_re {
@@ -627,7 +637,10 @@ pub fn maa_create_instance(state: State<Arc<MaaState>>, instance_id: String) -> 
 
 /// 销毁实例
 #[tauri::command]
-pub fn maa_destroy_instance(state: State<Arc<MaaState>>, instance_id: String) -> Result<(), String> {
+pub fn maa_destroy_instance(
+    state: State<Arc<MaaState>>,
+    instance_id: String,
+) -> Result<(), String> {
     info!("maa_destroy_instance called, instance_id: {}", instance_id);
 
     let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
@@ -682,9 +695,9 @@ pub fn maa_connect_controller(
                 let screencap_methods_u64 = screencap_methods.parse::<u64>().map_err(|e| {
                     format!("Invalid screencap_methods '{}': {}", screencap_methods, e)
                 })?;
-                let input_methods_u64 = input_methods.parse::<u64>().map_err(|e| {
-                    format!("Invalid input_methods '{}': {}", input_methods, e)
-                })?;
+                let input_methods_u64 = input_methods
+                    .parse::<u64>()
+                    .map_err(|e| format!("Invalid input_methods '{}': {}", input_methods, e))?;
 
                 info!("Creating ADB controller:");
                 info!("  adb_path: {}", adb_path);
@@ -795,7 +808,9 @@ pub fn maa_connect_controller(
     debug!("Updating instance state...");
     {
         let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
-        let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+        let instance = instances
+            .get_mut(&instance_id)
+            .ok_or("Instance not found")?;
 
         // 清理旧的控制器
         if let Some(old_controller) = instance.controller.take() {
@@ -817,14 +832,17 @@ pub fn maa_get_connection_status(
     state: State<Arc<MaaState>>,
     instance_id: String,
 ) -> Result<ConnectionStatus, String> {
-    debug!("maa_get_connection_status called, instance_id: {}", instance_id);
+    debug!(
+        "maa_get_connection_status called, instance_id: {}",
+        instance_id
+    );
 
     let guard = MAA_LIBRARY.lock().map_err(|e| e.to_string())?;
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
 
     let instances = state.instances.lock().map_err(|e| e.to_string())?;
     let instance = instances.get(&instance_id).ok_or("Instance not found")?;
-    
+
     let status = match instance.controller {
         Some(ctrl) => {
             let connected = unsafe { (lib.maa_controller_connected)(ctrl) != 0 };
@@ -860,7 +878,9 @@ pub fn maa_load_resource(
     // 创建或获取资源
     let resource = {
         let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
-        let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+        let instance = instances
+            .get_mut(&instance_id)
+            .ok_or("Instance not found")?;
 
         if instance.resource.is_none() {
             let res = unsafe { (lib.maa_resource_create)() };
@@ -887,13 +907,16 @@ pub fn maa_load_resource(
         let normalized_str = normalized.to_string_lossy();
         let path_c = to_cstring(&normalized_str);
         let res_id = unsafe { (lib.maa_resource_post_bundle)(resource, path_c.as_ptr()) };
-        info!("Posted resource bundle: {} -> id: {}", normalized_str, res_id);
+        info!(
+            "Posted resource bundle: {} -> id: {}",
+            normalized_str, res_id
+        );
 
         if res_id == MAA_INVALID_ID {
             warn!("Failed to post resource bundle: {}", normalized_str);
             continue;
         }
-        
+
         res_ids.push(res_id);
     }
 
@@ -902,18 +925,24 @@ pub fn maa_load_resource(
 
 /// 检查资源是否已加载（通过 MaaResourceLoaded API 查询）
 #[tauri::command]
-pub fn maa_is_resource_loaded(state: State<Arc<MaaState>>, instance_id: String) -> Result<bool, String> {
-    debug!("maa_is_resource_loaded called, instance_id: {}", instance_id);
+pub fn maa_is_resource_loaded(
+    state: State<Arc<MaaState>>,
+    instance_id: String,
+) -> Result<bool, String> {
+    debug!(
+        "maa_is_resource_loaded called, instance_id: {}",
+        instance_id
+    );
 
     let guard = MAA_LIBRARY.lock().map_err(|e| e.to_string())?;
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
 
     let instances = state.instances.lock().map_err(|e| e.to_string())?;
     let instance = instances.get(&instance_id).ok_or("Instance not found")?;
-    
-    let loaded = instance.resource.map_or(false, |res| {
-        unsafe { (lib.maa_resource_loaded)(res) != 0 }
-    });
+
+    let loaded = instance
+        .resource
+        .map_or(false, |res| unsafe { (lib.maa_resource_loaded)(res) != 0 });
 
     debug!("maa_is_resource_loaded result: {}", loaded);
     Ok(loaded)
@@ -921,14 +950,19 @@ pub fn maa_is_resource_loaded(state: State<Arc<MaaState>>, instance_id: String) 
 
 /// 销毁资源（用于切换资源时重新创建）
 #[tauri::command]
-pub fn maa_destroy_resource(state: State<Arc<MaaState>>, instance_id: String) -> Result<(), String> {
+pub fn maa_destroy_resource(
+    state: State<Arc<MaaState>>,
+    instance_id: String,
+) -> Result<(), String> {
     info!("maa_destroy_resource called, instance_id: {}", instance_id);
 
     let guard = MAA_LIBRARY.lock().map_err(|e| e.to_string())?;
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
 
     let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
-    let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+    let instance = instances
+        .get_mut(&instance_id)
+        .ok_or("Instance not found")?;
 
     // 销毁旧的资源
     if let Some(resource) = instance.resource.take() {
@@ -969,7 +1003,9 @@ pub fn maa_run_task(
 
     let (_resource, _controller, tasker) = {
         let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
-        let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+        let instance = instances
+            .get_mut(&instance_id)
+            .ok_or("Instance not found")?;
 
         let resource = instance.resource.ok_or("Resource not loaded")?;
         let controller = instance.controller.ok_or("Controller not connected")?;
@@ -1059,10 +1095,7 @@ pub fn maa_get_task_status(
         _ => TaskStatus::Failed,
     };
 
-    debug!(
-        "maa_get_task_status result: {:?} (raw: {})",
-        result, status
-    );
+    debug!("maa_get_task_status result: {:?} (raw: {})", result, status);
     Ok(result)
 }
 
@@ -1076,7 +1109,9 @@ pub fn maa_stop_task(state: State<Arc<MaaState>>, instance_id: String) -> Result
 
     let tasker = {
         let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
-        let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+        let instance = instances
+            .get_mut(&instance_id)
+            .ok_or("Instance not found")?;
         // 清空缓存的 task_ids
         instance.task_ids.clear();
         instance.tasker.ok_or("Tasker not created")?
@@ -1111,7 +1146,8 @@ pub fn maa_override_pipeline(
         instance.tasker.ok_or("Tasker not created")?
     };
 
-    let override_fn = lib.maa_tasker_override_pipeline
+    let override_fn = lib
+        .maa_tasker_override_pipeline
         .ok_or("MaaTaskerOverridePipeline not available in this MaaFramework version")?;
 
     let override_c = to_cstring(&pipeline_override);
@@ -1152,41 +1188,44 @@ pub fn maa_is_running(state: State<Arc<MaaState>>, instance_id: String) -> Resul
 pub fn maa_post_screencap(state: State<Arc<MaaState>>, instance_id: String) -> Result<i64, String> {
     let guard = MAA_LIBRARY.lock().map_err(|e| e.to_string())?;
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
-    
+
     let controller = {
         let instances = state.instances.lock().map_err(|e| e.to_string())?;
         let instance = instances.get(&instance_id).ok_or("Instance not found")?;
         instance.controller.ok_or("Controller not connected")?
     };
-    
+
     let screencap_id = unsafe { (lib.maa_controller_post_screencap)(controller) };
-    
+
     if screencap_id == MAA_INVALID_ID {
         return Err("Failed to post screencap".to_string());
     }
-    
+
     Ok(screencap_id)
 }
 
 /// 获取缓存的截图（返回 base64 编码的 PNG 图像）
 #[tauri::command]
-pub fn maa_get_cached_image(state: State<Arc<MaaState>>, instance_id: String) -> Result<String, String> {
+pub fn maa_get_cached_image(
+    state: State<Arc<MaaState>>,
+    instance_id: String,
+) -> Result<String, String> {
     let guard = MAA_LIBRARY.lock().map_err(|e| e.to_string())?;
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
-    
+
     let controller = {
         let instances = state.instances.lock().map_err(|e| e.to_string())?;
         let instance = instances.get(&instance_id).ok_or("Instance not found")?;
         instance.controller.ok_or("Controller not connected")?
     };
-    
+
     unsafe {
         // 创建图像缓冲区
         let image_buffer = (lib.maa_image_buffer_create)();
         if image_buffer.is_null() {
             return Err("Failed to create image buffer".to_string());
         }
-        
+
         // 确保缓冲区被释放
         struct ImageBufferGuard<'a> {
             buffer: *mut MaaImageBuffer,
@@ -1194,30 +1233,35 @@ pub fn maa_get_cached_image(state: State<Arc<MaaState>>, instance_id: String) ->
         }
         impl Drop for ImageBufferGuard<'_> {
             fn drop(&mut self) {
-                unsafe { (self.lib.maa_image_buffer_destroy)(self.buffer); }
+                unsafe {
+                    (self.lib.maa_image_buffer_destroy)(self.buffer);
+                }
             }
         }
-        let _guard = ImageBufferGuard { buffer: image_buffer, lib };
-        
+        let _guard = ImageBufferGuard {
+            buffer: image_buffer,
+            lib,
+        };
+
         // 获取缓存的图像
         let success = (lib.maa_controller_cached_image)(controller, image_buffer);
         if success == 0 {
             return Err("Failed to get cached image".to_string());
         }
-        
+
         // 获取编码后的图像数据
         let encoded_ptr = (lib.maa_image_buffer_get_encoded)(image_buffer);
         let encoded_size = (lib.maa_image_buffer_get_encoded_size)(image_buffer);
-        
+
         if encoded_ptr.is_null() || encoded_size == 0 {
             return Err("No image data available".to_string());
         }
-        
+
         // 复制数据并转换为 base64
         let data = std::slice::from_raw_parts(encoded_ptr, encoded_size as usize);
-        use base64::{Engine as _, engine::general_purpose::STANDARD};
+        use base64::{engine::general_purpose::STANDARD, Engine as _};
         let base64_str = STANDARD.encode(data);
-        
+
         // 返回带 data URL 前缀的 base64 字符串
         Ok(format!("data:image/png;base64,{}", base64_str))
     }
@@ -1259,11 +1303,18 @@ pub async fn maa_start_tasks(
 
     // 使用 SendPtr 包装原始指针，以便跨越 await 边界
     let (resource, tasker) = {
-        let guard = MAA_LIBRARY.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+        let guard = MAA_LIBRARY
+            .lock()
+            .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
         let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
 
-        let mut instances = state.instances.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
-        let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+        let mut instances = state
+            .instances
+            .lock()
+            .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+        let instance = instances
+            .get_mut(&instance_id)
+            .ok_or("Instance not found")?;
 
         let resource = instance.resource.ok_or("Resource not loaded")?;
         let controller = instance.controller.ok_or("Controller not connected")?;
@@ -1290,7 +1341,10 @@ pub async fn maa_start_tasks(
             instance.tasker = Some(tasker);
         }
 
-        (SendPtr::new(resource), SendPtr::new(instance.tasker.unwrap()))
+        (
+            SendPtr::new(resource),
+            SendPtr::new(instance.tasker.unwrap()),
+        )
     };
 
     // 启动 Agent（如果配置了）
@@ -1300,7 +1354,9 @@ pub async fn maa_start_tasks(
 
         // 创建 AgentClient 并获取 socket_id（在 guard 作用域内完成同步操作）
         let (agent_client, socket_id) = {
-            let guard = MAA_LIBRARY.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+            let guard = MAA_LIBRARY
+                .lock()
+                .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
             let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
 
             let agent_client = unsafe { (lib.maa_agent_client_create_v2)(std::ptr::null()) };
@@ -1419,7 +1475,8 @@ pub async fn maa_start_tasks(
                             // 写入日志文件
                             if let Ok(mut guard) = log_file_clone.lock() {
                                 if let Some(ref mut file) = *guard {
-                                    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+                                    let timestamp =
+                                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
                                     let _ = writeln!(file, "{} [stdout] {}", timestamp, line);
                                 }
                             }
@@ -1459,7 +1516,8 @@ pub async fn maa_start_tasks(
                             // 写入日志文件
                             if let Ok(mut guard) = log_file_clone.lock() {
                                 if let Some(ref mut file) = *guard {
-                                    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+                                    let timestamp =
+                                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
                                     let _ = writeln!(file, "{} [stderr] {}", timestamp, line);
                                 }
                             }
@@ -1480,9 +1538,11 @@ pub async fn maa_start_tasks(
         // 设置连接超时并获取 connect 函数指针（在 guard 作用域内）
         let timeout_ms = agent.timeout.unwrap_or(-1);
         let connect_fn = {
-            let guard = MAA_LIBRARY.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+            let guard = MAA_LIBRARY
+                .lock()
+                .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
             let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
-            
+
             info!("Setting agent connect timeout: {} ms", timeout_ms);
             unsafe {
                 (lib.maa_agent_client_set_timeout)(agent_client.as_ptr(), timeout_ms);
@@ -1502,10 +1562,15 @@ pub async fn maa_start_tasks(
 
         if connected == 0 {
             // 连接失败，清理资源
-            let guard = MAA_LIBRARY.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+            let guard = MAA_LIBRARY
+                .lock()
+                .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
             let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
-            
-            let mut instances = state.instances.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+
+            let mut instances = state
+                .instances
+                .lock()
+                .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
             if let Some(instance) = instances.get_mut(&instance_id) {
                 instance.agent_child = Some(child);
             }
@@ -1519,20 +1584,25 @@ pub async fn maa_start_tasks(
 
         // 保存 agent 状态
         {
-            let mut instances = state.instances.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+            let mut instances = state
+                .instances
+                .lock()
+                .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
             if let Some(instance) = instances.get_mut(&instance_id) {
                 instance.agent_client = Some(agent_client.as_ptr());
                 instance.agent_child = Some(child);
             }
         }
-        
+
         Some(agent_client)
     } else {
         None
     };
 
     // 检查初始化状态并提交任务（重新获取 guard）
-    let guard = MAA_LIBRARY.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+    let guard = MAA_LIBRARY
+        .lock()
+        .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
 
     let inited = unsafe { (lib.maa_tasker_inited)(tasker.as_ptr()) };
@@ -1546,8 +1616,9 @@ pub async fn maa_start_tasks(
         let entry_c = to_cstring(&task.entry);
         let override_c = to_cstring(&task.pipeline_override);
 
-        let task_id =
-            unsafe { (lib.maa_tasker_post_task)(tasker.as_ptr(), entry_c.as_ptr(), override_c.as_ptr()) };
+        let task_id = unsafe {
+            (lib.maa_tasker_post_task)(tasker.as_ptr(), entry_c.as_ptr(), override_c.as_ptr())
+        };
 
         if task_id == MAA_INVALID_ID {
             warn!("Failed to post task: {}", task.entry);
@@ -1563,12 +1634,15 @@ pub async fn maa_start_tasks(
 
     // 缓存 task_ids，用于刷新后恢复状态
     {
-        let mut instances = state.instances.lock().map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
+        let mut instances = state
+            .instances
+            .lock()
+            .map_err(|e: std::sync::PoisonError<_>| e.to_string())?;
         if let Some(instance) = instances.get_mut(&instance_id) {
             instance.task_ids = task_ids.clone();
         }
     }
-    
+
     // agent_client 用于表示是否启动了 agent（用于调试日志）
     if agent_client.is_some() {
         info!("Tasks started with agent");
@@ -1586,7 +1660,9 @@ pub fn maa_stop_agent(state: State<Arc<MaaState>>, instance_id: String) -> Resul
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
 
     let mut instances = state.instances.lock().map_err(|e| e.to_string())?;
-    let instance = instances.get_mut(&instance_id).ok_or("Instance not found")?;
+    let instance = instances
+        .get_mut(&instance_id)
+        .ok_or("Instance not found")?;
 
     // 断开并销毁 agent
     if let Some(agent) = instance.agent_client.take() {
@@ -1671,7 +1747,10 @@ pub fn maa_get_instance_state(
     state: State<Arc<MaaState>>,
     instance_id: String,
 ) -> Result<InstanceState, String> {
-    debug!("maa_get_instance_state called, instance_id: {}", instance_id);
+    debug!(
+        "maa_get_instance_state called, instance_id: {}",
+        instance_id
+    );
 
     let guard = MAA_LIBRARY.lock().map_err(|e| e.to_string())?;
     let lib = guard.as_ref().ok_or("MaaFramework not initialized")?;
@@ -1680,20 +1759,20 @@ pub fn maa_get_instance_state(
     let instance = instances.get(&instance_id).ok_or("Instance not found")?;
 
     // 通过 Maa API 查询真实状态
-    let connected = instance.controller.map_or(false, |ctrl| {
-        unsafe { (lib.maa_controller_connected)(ctrl) != 0 }
+    let connected = instance.controller.map_or(false, |ctrl| unsafe {
+        (lib.maa_controller_connected)(ctrl) != 0
     });
 
-    let resource_loaded = instance.resource.map_or(false, |res| {
-        unsafe { (lib.maa_resource_loaded)(res) != 0 }
+    let resource_loaded = instance
+        .resource
+        .map_or(false, |res| unsafe { (lib.maa_resource_loaded)(res) != 0 });
+
+    let tasker_inited = instance.tasker.map_or(false, |tasker| unsafe {
+        (lib.maa_tasker_inited)(tasker) != 0
     });
 
-    let tasker_inited = instance.tasker.map_or(false, |tasker| {
-        unsafe { (lib.maa_tasker_inited)(tasker) != 0 }
-    });
-
-    let is_running = instance.tasker.map_or(false, |tasker| {
-        unsafe { (lib.maa_tasker_running)(tasker) != 0 }
+    let is_running = instance.tasker.map_or(false, |tasker| unsafe {
+        (lib.maa_tasker_running)(tasker) != 0
     });
 
     Ok(InstanceState {
@@ -1715,28 +1794,31 @@ pub fn maa_get_all_states(state: State<Arc<MaaState>>) -> Result<AllInstanceStat
 
     let instances = state.instances.lock().map_err(|e| e.to_string())?;
     let cached_adb = state.cached_adb_devices.lock().map_err(|e| e.to_string())?;
-    let cached_win32 = state.cached_win32_windows.lock().map_err(|e| e.to_string())?;
+    let cached_win32 = state
+        .cached_win32_windows
+        .lock()
+        .map_err(|e| e.to_string())?;
 
     let mut instance_states = HashMap::new();
-    
+
     // 如果 MaaFramework 未初始化，返回空状态
     if let Some(lib) = lib {
         for (id, instance) in instances.iter() {
             // 通过 Maa API 查询真实状态
-            let connected = instance.controller.map_or(false, |ctrl| {
-                unsafe { (lib.maa_controller_connected)(ctrl) != 0 }
+            let connected = instance.controller.map_or(false, |ctrl| unsafe {
+                (lib.maa_controller_connected)(ctrl) != 0
             });
 
-            let resource_loaded = instance.resource.map_or(false, |res| {
-                unsafe { (lib.maa_resource_loaded)(res) != 0 }
+            let resource_loaded = instance
+                .resource
+                .map_or(false, |res| unsafe { (lib.maa_resource_loaded)(res) != 0 });
+
+            let tasker_inited = instance.tasker.map_or(false, |tasker| unsafe {
+                (lib.maa_tasker_inited)(tasker) != 0
             });
 
-            let tasker_inited = instance.tasker.map_or(false, |tasker| {
-                unsafe { (lib.maa_tasker_inited)(tasker) != 0 }
-            });
-
-            let is_running = instance.tasker.map_or(false, |tasker| {
-                unsafe { (lib.maa_tasker_running)(tasker) != 0 }
+            let is_running = instance.tasker.map_or(false, |tasker| unsafe {
+                (lib.maa_tasker_running)(tasker) != 0
             });
 
             instance_states.insert(
@@ -1769,9 +1851,14 @@ pub fn maa_get_cached_adb_devices(state: State<Arc<MaaState>>) -> Result<Vec<Adb
 
 /// 获取缓存的 Win32 窗口列表
 #[tauri::command]
-pub fn maa_get_cached_win32_windows(state: State<Arc<MaaState>>) -> Result<Vec<Win32Window>, String> {
+pub fn maa_get_cached_win32_windows(
+    state: State<Arc<MaaState>>,
+) -> Result<Vec<Win32Window>, String> {
     debug!("maa_get_cached_win32_windows called");
-    let cached = state.cached_win32_windows.lock().map_err(|e| e.to_string())?;
+    let cached = state
+        .cached_win32_windows
+        .lock()
+        .map_err(|e| e.to_string())?;
     Ok(cached.clone())
 }
 
@@ -1785,7 +1872,7 @@ pub fn extract_zip(zip_path: String, dest_dir: String) -> Result<(), String> {
     info!("extract_zip called: {} -> {}", zip_path, dest_dir);
 
     let path_lower = zip_path.to_lowercase();
-    
+
     // 根据文件扩展名判断格式
     if path_lower.ends_with(".tar.gz") || path_lower.ends_with(".tgz") {
         extract_tar_gz(&zip_path, &dest_dir)
@@ -1799,15 +1886,15 @@ fn extract_zip_file(zip_path: &str, dest_dir: &str) -> Result<(), String> {
     let file = std::fs::File::open(zip_path)
         .map_err(|e| format!("无法打开 ZIP 文件 [{}]: {}", zip_path, e))?;
 
-    let mut archive = zip::ZipArchive::new(file)
-        .map_err(|e| format!("无法解析 ZIP 文件: {}", e))?;
+    let mut archive =
+        zip::ZipArchive::new(file).map_err(|e| format!("无法解析 ZIP 文件: {}", e))?;
 
     // 确保目标目录存在
-    std::fs::create_dir_all(dest_dir)
-        .map_err(|e| format!("无法创建目录 [{}]: {}", dest_dir, e))?;
+    std::fs::create_dir_all(dest_dir).map_err(|e| format!("无法创建目录 [{}]: {}", dest_dir, e))?;
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i)
+        let mut file = archive
+            .by_index(i)
             .map_err(|e| format!("无法读取 ZIP 条目 {}: {}", i, e))?;
 
         let outpath = match file.enclosed_name() {
@@ -1850,10 +1937,10 @@ fn extract_tar_gz(tar_path: &str, dest_dir: &str) -> Result<(), String> {
     let mut archive = Archive::new(gz);
 
     // 确保目标目录存在
-    std::fs::create_dir_all(dest_dir)
-        .map_err(|e| format!("无法创建目录 [{}]: {}", dest_dir, e))?;
+    std::fs::create_dir_all(dest_dir).map_err(|e| format!("无法创建目录 [{}]: {}", dest_dir, e))?;
 
-    archive.unpack(dest_dir)
+    archive
+        .unpack(dest_dir)
         .map_err(|e| format!("解压 tar.gz 失败: {}", e))?;
 
     info!("extract_tar_gz success");
@@ -1864,7 +1951,7 @@ fn extract_tar_gz(tar_path: &str, dest_dir: &str) -> Result<(), String> {
 #[tauri::command]
 pub fn check_changes_json(extract_dir: String) -> Result<Option<ChangesJson>, String> {
     let changes_path = std::path::Path::new(&extract_dir).join("changes.json");
-    
+
     if !changes_path.exists() {
         return Ok(None);
     }
@@ -1872,8 +1959,8 @@ pub fn check_changes_json(extract_dir: String) -> Result<Option<ChangesJson>, St
     let content = std::fs::read_to_string(&changes_path)
         .map_err(|e| format!("无法读取 changes.json: {}", e))?;
 
-    let changes: ChangesJson = serde_json::from_str(&content)
-        .map_err(|e| format!("无法解析 changes.json: {}", e))?;
+    let changes: ChangesJson =
+        serde_json::from_str(&content).map_err(|e| format!("无法解析 changes.json: {}", e))?;
 
     Ok(Some(changes))
 }
@@ -1901,11 +1988,12 @@ fn move_to_old_folder(source: &std::path::Path) -> Result<(), String> {
     std::fs::create_dir_all(&old_dir)
         .map_err(|e| format!("无法创建 old 目录 [{}]: {}", old_dir.display(), e))?;
 
-    let file_name = source.file_name()
+    let file_name = source
+        .file_name()
         .ok_or_else(|| format!("无法获取文件名: {}", source.display()))?;
-    
+
     let mut dest = old_dir.join(file_name);
-    
+
     // 如果目标已存在，添加 .bak01, .bak02 等后缀
     if dest.exists() {
         let base_name = file_name.to_string_lossy();
@@ -1920,9 +2008,15 @@ fn move_to_old_folder(source: &std::path::Path) -> Result<(), String> {
     }
 
     // 执行移动（重命名）
-    std::fs::rename(source, &dest)
-        .map_err(|e| format!("无法移动 [{}] -> [{}]: {}", source.display(), dest.display(), e))?;
-    
+    std::fs::rename(source, &dest).map_err(|e| {
+        format!(
+            "无法移动 [{}] -> [{}]: {}",
+            source.display(),
+            dest.display(),
+            e
+        )
+    })?;
+
     info!("Moved to old: {} -> {}", source.display(), dest.display());
     Ok(())
 }
@@ -1998,11 +2092,17 @@ fn copy_file_with_move_old(src: &std::path::Path, dst: &std::path::Path) -> Resu
     if dst.exists() {
         move_to_old_folder(dst)?;
     }
-    
+
     // 复制新文件
-    std::fs::copy(src, dst)
-        .map_err(|e| format!("无法复制文件 [{}] -> [{}]: {}", src.display(), dst.display(), e))?;
-    
+    std::fs::copy(src, dst).map_err(|e| {
+        format!(
+            "无法复制文件 [{}] -> [{}]: {}",
+            src.display(),
+            dst.display(),
+            e
+        )
+    })?;
+
     Ok(())
 }
 
@@ -2012,11 +2112,10 @@ fn copy_dir_contents(src: &str, dst: &str, skip_files: Option<&[&str]>) -> Resul
     let dst_path = std::path::Path::new(dst);
 
     // 确保目标目录存在
-    std::fs::create_dir_all(dst_path)
-        .map_err(|e| format!("无法创建目录 [{}]: {}", dst, e))?;
+    std::fs::create_dir_all(dst_path).map_err(|e| format!("无法创建目录 [{}]: {}", dst, e))?;
 
-    for entry in std::fs::read_dir(src_path)
-        .map_err(|e| format!("无法读取目录 [{}]: {}", src, e))?
+    for entry in
+        std::fs::read_dir(src_path).map_err(|e| format!("无法读取目录 [{}]: {}", src, e))?
     {
         let entry = entry.map_err(|e| format!("无法读取目录条目: {}", e))?;
         let file_name = entry.file_name();
@@ -2044,11 +2143,10 @@ fn copy_dir_contents(src: &str, dst: &str, skip_files: Option<&[&str]>) -> Resul
 
 /// 递归复制整个目录
 fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> Result<(), String> {
-    std::fs::create_dir_all(dst)
-        .map_err(|e| format!("无法创建目录 [{}]: {}", dst.display(), e))?;
+    std::fs::create_dir_all(dst).map_err(|e| format!("无法创建目录 [{}]: {}", dst.display(), e))?;
 
-    for entry in std::fs::read_dir(src)
-        .map_err(|e| format!("无法读取目录 [{}]: {}", src.display(), e))?
+    for entry in
+        std::fs::read_dir(src).map_err(|e| format!("无法读取目录 [{}]: {}", src.display(), e))?
     {
         let entry = entry.map_err(|e| format!("无法读取目录条目: {}", e))?;
         let src_item = entry.path();
@@ -2100,10 +2198,10 @@ pub struct DownloadProgressEvent {
 }
 
 /// 流式下载文件，支持进度回调和取消
-/// 
+///
 /// 使用 reqwest 进行流式下载，直接写入文件而不经过内存缓冲，
 /// 解决 JavaScript 下载大文件时的性能问题
-/// 
+///
 /// 返回值包含 session_id，前端用于匹配进度事件
 #[tauri::command]
 pub async fn download_file(
@@ -2128,8 +2226,7 @@ pub async fn download_file(
 
     // 确保目录存在
     if let Some(parent) = save_path_obj.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("无法创建目录: {}", e))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("无法创建目录: {}", e))?;
     }
 
     // 使用临时文件名下载
@@ -2156,8 +2253,7 @@ pub async fn download_file(
     let total = total_size.or(content_length).unwrap_or(0);
 
     // 创建临时文件
-    let mut file = std::fs::File::create(&temp_path)
-        .map_err(|e| format!("无法创建文件: {}", e))?;
+    let mut file = std::fs::File::create(&temp_path).map_err(|e| format!("无法创建文件: {}", e))?;
 
     // 流式下载
     let mut stream = response.bytes_stream();
@@ -2170,8 +2266,8 @@ pub async fn download_file(
 
     while let Some(chunk) = stream.next().await {
         // 检查取消标志或 session 是否已过期
-        if DOWNLOAD_CANCELLED.load(Ordering::SeqCst) 
-            || CURRENT_DOWNLOAD_SESSION.load(Ordering::SeqCst) != session_id 
+        if DOWNLOAD_CANCELLED.load(Ordering::SeqCst)
+            || CURRENT_DOWNLOAD_SESSION.load(Ordering::SeqCst) != session_id
         {
             info!("download_file cancelled (session {})", session_id);
             drop(file);
@@ -2181,7 +2277,7 @@ pub async fn download_file(
         }
 
         let chunk = chunk.map_err(|e| format!("下载数据失败: {}", e))?;
-        
+
         buffer.extend_from_slice(&chunk);
         downloaded += chunk.len() as u64;
 
@@ -2204,13 +2300,16 @@ pub async fn download_file(
                 0.0
             };
 
-            let _ = app.emit("download-progress", DownloadProgressEvent {
-                session_id,
-                downloaded_size: downloaded,
-                total_size: total,
-                speed,
-                progress,
-            });
+            let _ = app.emit(
+                "download-progress",
+                DownloadProgressEvent {
+                    session_id,
+                    downloaded_size: downloaded,
+                    total_size: total,
+                    speed,
+                    progress,
+                },
+            );
 
             last_progress_time = now;
             last_downloaded = downloaded;
@@ -2218,10 +2317,13 @@ pub async fn download_file(
     }
 
     // 最后再检查一次取消标志
-    if DOWNLOAD_CANCELLED.load(Ordering::SeqCst) 
-        || CURRENT_DOWNLOAD_SESSION.load(Ordering::SeqCst) != session_id 
+    if DOWNLOAD_CANCELLED.load(Ordering::SeqCst)
+        || CURRENT_DOWNLOAD_SESSION.load(Ordering::SeqCst) != session_id
     {
-        info!("download_file cancelled before finalization (session {})", session_id);
+        info!(
+            "download_file cancelled before finalization (session {})",
+            session_id
+        );
         drop(file);
         let _ = std::fs::remove_file(&temp_path);
         return Err("下载已取消".to_string());
@@ -2239,13 +2341,16 @@ pub async fn download_file(
     drop(file);
 
     // 发送最终进度
-    let _ = app.emit("download-progress", DownloadProgressEvent {
-        session_id,
-        downloaded_size: downloaded,
-        total_size: if total > 0 { total } else { downloaded },
-        speed: 0,
-        progress: 100.0,
-    });
+    let _ = app.emit(
+        "download-progress",
+        DownloadProgressEvent {
+            session_id,
+            downloaded_size: downloaded,
+            total_size: if total > 0 { total } else { downloaded },
+            speed: 0,
+            progress: 100.0,
+        },
+    );
 
     // 将可能存在的旧文件移动到 old 文件夹
     if save_path_obj.exists() {
@@ -2253,10 +2358,12 @@ pub async fn download_file(
     }
 
     // 重命名临时文件
-    std::fs::rename(&temp_path, &save_path)
-        .map_err(|e| format!("重命名文件失败: {}", e))?;
+    std::fs::rename(&temp_path, &save_path).map_err(|e| format!("重命名文件失败: {}", e))?;
 
-    info!("download_file completed: {} bytes (session {})", downloaded, session_id);
+    info!(
+        "download_file completed: {} bytes (session {})",
+        downloaded, session_id
+    );
     Ok(session_id)
 }
 
@@ -2264,14 +2371,14 @@ pub async fn download_file(
 #[tauri::command]
 pub fn cancel_download(save_path: String) -> Result<(), String> {
     info!("cancel_download called for: {}", save_path);
-    
+
     // 设置取消标志，让下载循环退出
     DOWNLOAD_CANCELLED.store(true, Ordering::SeqCst);
-    
+
     // 同时尝试删除临时文件（如果已经创建）
     let temp_path = format!("{}.downloading", save_path);
     let path = std::path::Path::new(&temp_path);
-    
+
     if path.exists() {
         if let Err(e) = std::fs::remove_file(path) {
             // 文件可能正在被写入，记录警告但不报错
@@ -2280,14 +2387,17 @@ pub fn cancel_download(save_path: String) -> Result<(), String> {
             info!("cancel_download: removed {}", temp_path);
         }
     }
-    
+
     Ok(())
 }
 
 /// 构建 User-Agent 字符串
 fn build_user_agent() -> String {
     let version = env!("CARGO_PKG_VERSION");
-    format!("MXU/{} (Windows NT 10.0; Win64; x64; amd64) Tauri/2.0", version)
+    format!(
+        "MXU/{} (Windows NT 10.0; Win64; x64; amd64) Tauri/2.0",
+        version
+    )
 }
 
 // ============================================================================
@@ -2353,8 +2463,7 @@ pub fn restart_as_admin(app_handle: tauri::AppHandle) -> Result<(), String> {
         use windows::Win32::UI::Shell::ShellExecuteW;
         use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
-        let exe_path = std::env::current_exe()
-            .map_err(|e| format!("获取程序路径失败: {}", e))?;
+        let exe_path = std::env::current_exe().map_err(|e| format!("获取程序路径失败: {}", e))?;
 
         let exe_path_str = exe_path.to_string_lossy().to_string();
 
@@ -2373,8 +2482,8 @@ pub fn restart_as_admin(app_handle: tauri::AppHandle) -> Result<(), String> {
                 HWND::default(),
                 PCWSTR::from_raw(operation.as_ptr()),
                 PCWSTR::from_raw(file.as_ptr()),
-                PCWSTR::null(),  // 无参数
-                PCWSTR::null(),  // 使用当前目录
+                PCWSTR::null(), // 无参数
+                PCWSTR::null(), // 使用当前目录
                 SW_SHOWNORMAL,
             );
 
@@ -2385,7 +2494,10 @@ pub fn restart_as_admin(app_handle: tauri::AppHandle) -> Result<(), String> {
                 app_handle.exit(0);
                 Ok(())
             } else {
-                Err(format!("以管理员身份启动失败: 错误码 {}", result.0 as usize))
+                Err(format!(
+                    "以管理员身份启动失败: 错误码 {}",
+                    result.0 as usize
+                ))
             }
         }
     }

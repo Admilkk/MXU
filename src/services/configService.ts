@@ -52,11 +52,11 @@ function getConfigPath(basePath: string, projectName?: string): string {
 export async function loadConfig(basePath: string, projectName?: string): Promise<MxuConfig> {
   if (isTauri()) {
     const configPath = getConfigPath(basePath, projectName);
-    
+
     log.debug('加载配置, 路径:', configPath);
-    
+
     const { readTextFile, exists } = await import('@tauri-apps/plugin-fs');
-    
+
     if (await exists(configPath)) {
       try {
         const content = await readTextFile(configPath);
@@ -74,12 +74,13 @@ export async function loadConfig(basePath: string, projectName?: string): Promis
     // 浏览器环境：尝试从 public 目录加载
     try {
       const fileName = getConfigFileName(projectName);
-      const fetchPath = basePath === '' ? `/${CONFIG_DIR}/${fileName}` : `${basePath}/${CONFIG_DIR}/${fileName}`;
+      const fetchPath =
+        basePath === '' ? `/${CONFIG_DIR}/${fileName}` : `${basePath}/${CONFIG_DIR}/${fileName}`;
       const response = await fetch(fetchPath);
       if (response.ok) {
         const contentType = response.headers.get('content-type');
         if (contentType?.includes('application/json')) {
-          const config = await response.json() as MxuConfig;
+          const config = (await response.json()) as MxuConfig;
           log.info('配置加载成功（浏览器环境）');
           return config;
         }
@@ -98,7 +99,11 @@ export async function loadConfig(basePath: string, projectName?: string): Promis
  * @param config 配置对象
  * @param projectName 项目名称（来自 interface.json 的 name 字段）
  */
-export async function saveConfig(basePath: string, config: MxuConfig, projectName?: string): Promise<boolean> {
+export async function saveConfig(
+  basePath: string,
+  config: MxuConfig,
+  projectName?: string,
+): Promise<boolean> {
   if (!isTauri()) {
     // 浏览器环境不支持保存文件，使用 localStorage 作为后备
     try {
@@ -113,18 +118,18 @@ export async function saveConfig(basePath: string, config: MxuConfig, projectNam
 
   const configDir = getConfigDir(basePath);
   const configPath = getConfigPath(basePath, projectName);
-  
+
   log.debug('保存配置, 路径:', configPath);
 
   try {
     const { writeTextFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
-    
+
     // 确保 config 目录存在
-    if (!await exists(configDir)) {
+    if (!(await exists(configDir))) {
       log.debug('创建配置目录:', configDir);
       await mkdir(configDir, { recursive: true });
     }
-    
+
     const content = JSON.stringify(config, null, 2);
     await writeTextFile(configPath, content);
     log.info('配置保存成功');
@@ -141,7 +146,7 @@ export async function saveConfig(basePath: string, config: MxuConfig, projectNam
  */
 export function loadConfigFromStorage(projectName?: string): MxuConfig | null {
   if (isTauri()) return null;
-  
+
   try {
     const storageKey = projectName ? `mxu-config-${projectName}` : 'mxu-config';
     const stored = localStorage.getItem(storageKey);

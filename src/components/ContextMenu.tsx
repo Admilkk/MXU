@@ -92,13 +92,7 @@ export function getIcon(name: string): LucideIcon | undefined {
 }
 
 // 单个菜单项组件
-function MenuItemComponent({
-  item,
-  onClose,
-}: {
-  item: MenuItem;
-  onClose: () => void;
-}) {
+function MenuItemComponent({ item, onClose }: { item: MenuItem; onClose: () => void }) {
   const handleClick = () => {
     if (item.disabled || item.children) return;
     item.onClick?.();
@@ -120,9 +114,9 @@ function MenuItemComponent({
         item.disabled
           ? 'text-text-muted cursor-not-allowed'
           : item.danger
-          ? 'text-error hover:bg-error/10'
-          : 'text-text-primary hover:bg-bg-hover',
-        item.checked !== undefined && 'pl-2'
+            ? 'text-error hover:bg-error/10'
+            : 'text-text-primary hover:bg-bg-hover',
+        item.checked !== undefined && 'pl-2',
       )}
     >
       {/* 选中状态图标 */}
@@ -139,9 +133,7 @@ function MenuItemComponent({
       <span className="flex-1">{item.label}</span>
 
       {/* 快捷键 */}
-      {item.shortcut && (
-        <span className="text-xs text-text-muted ml-4">{item.shortcut}</span>
-      )}
+      {item.shortcut && <span className="text-xs text-text-muted ml-4">{item.shortcut}</span>}
 
       {/* 子菜单箭头 */}
       {item.children && <ChevronRight className="w-4 h-4 text-text-muted" />}
@@ -216,7 +208,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
         'fixed z-[9999] min-w-[180px] max-w-[280px]',
         'bg-bg-secondary border border-border rounded-lg shadow-lg',
         'py-1 px-1',
-        'animate-in fade-in zoom-in-95 duration-100'
+        'animate-in fade-in zoom-in-95 duration-100',
       )}
       style={{ left: position.x, top: position.y }}
       onContextMenu={(e) => e.preventDefault()}
@@ -229,7 +221,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
         />
       ))}
     </div>,
-    document.body
+    document.body,
   );
 }
 
@@ -247,7 +239,7 @@ export function useContextMenu() {
         items,
       });
     },
-    [setState]
+    [setState],
   );
 
   const hide = useCallback(() => {
@@ -260,7 +252,7 @@ export function useContextMenu() {
 // 使用 React state 管理菜单状态
 function useContextMenuState(): [
   ContextMenuState,
-  React.Dispatch<React.SetStateAction<ContextMenuState>>
+  React.Dispatch<React.SetStateAction<ContextMenuState>>,
 ] {
   const [state, setState] = useState<ContextMenuState>({
     isOpen: false,
@@ -270,4 +262,3 @@ function useContextMenuState(): [
 
   return [state, setState];
 }
-

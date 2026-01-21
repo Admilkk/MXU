@@ -12,7 +12,10 @@ import { loggers } from '@/utils/logger';
 const log = loggers.app;
 
 // Focus 消息的占位符替换
-function replaceFocusPlaceholders(template: string, details: MaaCallbackDetails & Record<string, unknown>): string {
+function replaceFocusPlaceholders(
+  template: string,
+  details: MaaCallbackDetails & Record<string, unknown>,
+): string {
   return template.replace(/\{(\w+)\}/g, (match, key) => {
     const value = details[key];
     if (value !== undefined && value !== null) {
@@ -41,15 +44,21 @@ export function useMaaCallbackLogger() {
         const unlisten = await maaService.onCallback((message, details) => {
           // 组件已卸载则忽略
           if (cancelled) return;
-          
+
           // 获取当前活动实例 ID
           const currentActiveId = useAppStore.getState().activeInstanceId;
           if (!currentActiveId) return;
 
           // 根据消息类型处理
-          handleCallback(currentActiveId, message, details as MaaCallbackDetails & Record<string, unknown>, t, addLog);
+          handleCallback(
+            currentActiveId,
+            message,
+            details as MaaCallbackDetails & Record<string, unknown>,
+            t,
+            addLog,
+          );
         });
-        
+
         // 如果在等待期间组件已卸载，立即取消监听
         if (cancelled) {
           unlisten();
@@ -78,11 +87,11 @@ function handleCallback(
   message: string,
   details: MaaCallbackDetails & Record<string, unknown>,
   t: (key: string, options?: Record<string, unknown>) => string,
-  addLog: (instanceId: string, log: { type: LogType; message: string }) => void
+  addLog: (instanceId: string, log: { type: LogType; message: string }) => void,
 ) {
   // 获取 ID 名称映射函数
   const { getCtrlName, getResName, getTaskName, getTaskNameByEntry } = useAppStore.getState();
-  
+
   // 首先检查是否有 focus 字段，有则优先处理 focus 消息
   const focus = details.focus as Record<string, string> | undefined;
   if (focus && focus[message]) {
@@ -98,9 +107,9 @@ function handleCallback(
     case 'Controller.Action.Starting':
       if (isConnectAction(details)) {
         const deviceName = details.ctrl_id !== undefined ? getCtrlName(details.ctrl_id) : undefined;
-        addLog(instanceId, { 
-          type: 'info', 
-          message: t('logs.messages.connecting', { device: deviceName || '' }) 
+        addLog(instanceId, {
+          type: 'info',
+          message: t('logs.messages.connecting', { device: deviceName || '' }),
         });
       }
       break;
@@ -108,9 +117,9 @@ function handleCallback(
     case 'Controller.Action.Succeeded':
       if (isConnectAction(details)) {
         const deviceName = details.ctrl_id !== undefined ? getCtrlName(details.ctrl_id) : undefined;
-        addLog(instanceId, { 
-          type: 'success', 
-          message: t('logs.messages.connected', { device: deviceName || '' }) 
+        addLog(instanceId, {
+          type: 'success',
+          message: t('logs.messages.connected', { device: deviceName || '' }),
         });
       }
       break;
@@ -118,9 +127,9 @@ function handleCallback(
     case 'Controller.Action.Failed':
       if (isConnectAction(details)) {
         const deviceName = details.ctrl_id !== undefined ? getCtrlName(details.ctrl_id) : undefined;
-        addLog(instanceId, { 
-          type: 'error', 
-          message: t('logs.messages.connectFailed', { device: deviceName || '' }) 
+        addLog(instanceId, {
+          type: 'error',
+          message: t('logs.messages.connectFailed', { device: deviceName || '' }),
         });
       }
       break;
@@ -128,29 +137,29 @@ function handleCallback(
     // ==================== 资源加载消息 ====================
     case 'Resource.Loading.Starting': {
       const resourceName = details.res_id !== undefined ? getResName(details.res_id) : undefined;
-      addLog(instanceId, { 
-        type: 'info', 
-        message: t('logs.messages.loadingResource', { 
-          name: resourceName || details.path || ''
-        }) 
+      addLog(instanceId, {
+        type: 'info',
+        message: t('logs.messages.loadingResource', {
+          name: resourceName || details.path || '',
+        }),
       });
       break;
     }
 
     case 'Resource.Loading.Succeeded': {
       const resourceName = details.res_id !== undefined ? getResName(details.res_id) : undefined;
-      addLog(instanceId, { 
-        type: 'success', 
-        message: t('logs.messages.resourceLoaded', { name: resourceName || details.path || '' }) 
+      addLog(instanceId, {
+        type: 'success',
+        message: t('logs.messages.resourceLoaded', { name: resourceName || details.path || '' }),
       });
       break;
     }
 
     case 'Resource.Loading.Failed': {
       const resourceName = details.res_id !== undefined ? getResName(details.res_id) : undefined;
-      addLog(instanceId, { 
-        type: 'error', 
-        message: t('logs.messages.resourceFailed', { name: resourceName || details.path || '' }) 
+      addLog(instanceId, {
+        type: 'error',
+        message: t('logs.messages.resourceFailed', { name: resourceName || details.path || '' }),
       });
       break;
     }
@@ -159,9 +168,9 @@ function handleCallback(
     case 'Tasker.Task.Starting': {
       // 特殊处理内部停止任务
       if (details.entry === 'MaaTaskerPostStop') {
-        addLog(instanceId, { 
-          type: 'info', 
-          message: t('logs.messages.taskStarting', { name: t('logs.messages.stopTask') }) 
+        addLog(instanceId, {
+          type: 'info',
+          message: t('logs.messages.taskStarting', { name: t('logs.messages.stopTask') }),
         });
         break;
       }
@@ -170,11 +179,11 @@ function handleCallback(
       if (!taskName && details.entry) {
         taskName = getTaskNameByEntry(details.entry);
       }
-      addLog(instanceId, { 
-        type: 'info', 
-        message: t('logs.messages.taskStarting', { 
-          name: taskName || details.entry || ''
-        }) 
+      addLog(instanceId, {
+        type: 'info',
+        message: t('logs.messages.taskStarting', {
+          name: taskName || details.entry || '',
+        }),
       });
       break;
     }
@@ -182,9 +191,9 @@ function handleCallback(
     case 'Tasker.Task.Succeeded': {
       // 特殊处理内部停止任务
       if (details.entry === 'MaaTaskerPostStop') {
-        addLog(instanceId, { 
-          type: 'success', 
-          message: t('logs.messages.taskSucceeded', { name: t('logs.messages.stopTask') }) 
+        addLog(instanceId, {
+          type: 'success',
+          message: t('logs.messages.taskSucceeded', { name: t('logs.messages.stopTask') }),
         });
         break;
       }
@@ -192,11 +201,11 @@ function handleCallback(
       if (!taskName && details.entry) {
         taskName = getTaskNameByEntry(details.entry);
       }
-      addLog(instanceId, { 
-        type: 'success', 
-        message: t('logs.messages.taskSucceeded', { 
-          name: taskName || details.entry || ''
-        }) 
+      addLog(instanceId, {
+        type: 'success',
+        message: t('logs.messages.taskSucceeded', {
+          name: taskName || details.entry || '',
+        }),
       });
       break;
     }
@@ -204,9 +213,9 @@ function handleCallback(
     case 'Tasker.Task.Failed': {
       // 特殊处理内部停止任务
       if (details.entry === 'MaaTaskerPostStop') {
-        addLog(instanceId, { 
-          type: 'error', 
-          message: t('logs.messages.taskFailed', { name: t('logs.messages.stopTask') }) 
+        addLog(instanceId, {
+          type: 'error',
+          message: t('logs.messages.taskFailed', { name: t('logs.messages.stopTask') }),
         });
         break;
       }
@@ -214,11 +223,11 @@ function handleCallback(
       if (!taskName && details.entry) {
         taskName = getTaskNameByEntry(details.entry);
       }
-      addLog(instanceId, { 
-        type: 'error', 
-        message: t('logs.messages.taskFailed', { 
-          name: taskName || details.entry || ''
-        }) 
+      addLog(instanceId, {
+        type: 'error',
+        message: t('logs.messages.taskFailed', {
+          name: taskName || details.entry || '',
+        }),
       });
       break;
     }
@@ -266,16 +275,16 @@ export function useMaaAgentLogger() {
           (event) => {
             // 组件已卸载则忽略
             if (cancelled) return;
-            
+
             const { instance_id, line } = event.payload;
             // 使用 agent 类型显示输出
-            addLog(instance_id, { 
-              type: 'agent', 
-              message: line 
+            addLog(instance_id, {
+              type: 'agent',
+              message: line,
             });
-          }
+          },
         );
-        
+
         // 如果在等待期间组件已卸载，立即取消监听
         if (cancelled) {
           unlisten();

@@ -10,18 +10,18 @@
 
 ## 技术栈
 
-| 类别 | 技术 | 版本 |
-|------|------|------|
-| 桌面框架 | Tauri | 2.x |
-| 后端语言 | Rust | 1.70+ |
-| 前端框架 | React | 19.x |
-| 类型系统 | TypeScript | 5.8+ |
-| 样式方案 | Tailwind CSS | 4.x |
-| 状态管理 | Zustand | 5.x |
-| 国际化 | i18next + react-i18next | - |
-| 拖拽排序 | @dnd-kit | - |
-| 图标 | Lucide React | - |
-| 构建工具 | Vite | 7.x |
+| 类别     | 技术                    | 版本  |
+| -------- | ----------------------- | ----- |
+| 桌面框架 | Tauri                   | 2.x   |
+| 后端语言 | Rust                    | 1.70+ |
+| 前端框架 | React                   | 19.x  |
+| 类型系统 | TypeScript              | 5.8+  |
+| 样式方案 | Tailwind CSS            | 4.x   |
+| 状态管理 | Zustand                 | 5.x   |
+| 国际化   | i18next + react-i18next | -     |
+| 拖拽排序 | @dnd-kit                | -     |
+| 图标     | Lucide React            | -     |
+| 构建工具 | Vite                    | 7.x   |
 
 ## 目录结构
 

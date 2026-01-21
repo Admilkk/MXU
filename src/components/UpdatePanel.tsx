@@ -1,9 +1,22 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Download, ChevronRight, Maximize2, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import {
+  X,
+  Download,
+  ChevronRight,
+  Maximize2,
+  AlertCircle,
+  RefreshCw,
+  AlertTriangle,
+} from 'lucide-react';
 import { useAppStore, type DownloadProgress } from '@/stores/appStore';
 import { simpleMarkdownToHtml } from '@/services/contentResolver';
-import { downloadUpdate, getUpdateSavePath, MIRRORCHYAN_ERROR_CODES, savePendingUpdateInfo } from '@/services/updateService';
+import {
+  downloadUpdate,
+  getUpdateSavePath,
+  MIRRORCHYAN_ERROR_CODES,
+  savePendingUpdateInfo,
+} from '@/services/updateService';
 import { DownloadProgressBar } from './UpdateInfoCard';
 import clsx from 'clsx';
 
@@ -16,7 +29,7 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ top: 0, right: 0 });
-  
+
   const {
     updateInfo,
     basePath,
@@ -32,7 +45,7 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
   // 开始下载
   const startDownload = useCallback(async () => {
     if (!updateInfo?.downloadUrl) return;
-    
+
     setDownloadStatus('downloading');
     setDownloadProgress({
       downloadedSize: 0,
@@ -40,11 +53,11 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
       speed: 0,
       progress: 0,
     });
-    
+
     try {
       const savePath = await getUpdateSavePath(basePath, updateInfo.filename);
       setDownloadSavePath(savePath);
-      
+
       const success = await downloadUpdate({
         url: updateInfo.downloadUrl,
         savePath,
@@ -53,7 +66,7 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
           setDownloadProgress(progress);
         },
       });
-      
+
       if (success) {
         setDownloadStatus('completed');
         // 保存待安装更新信息，以便下次启动时自动安装
@@ -136,22 +149,22 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
   const errorText = useMemo(() => {
     if (!updateInfo?.errorCode) return null;
     const code = updateInfo.errorCode;
-    
+
     // code < 0 表示严重服务器错误
     if (code < 0) {
       return t('mirrorChyan.errors.negative');
     }
-    
+
     // 尝试获取已知错误码的翻译
     const knownCodes = [1001, 7001, 7002, 7003, 7004, 7005, 8001, 8002, 8003, 8004, 1];
     if (knownCodes.includes(code)) {
       return t(`mirrorChyan.errors.${code}`);
     }
-    
+
     // 未知错误码
-    return t('mirrorChyan.errors.unknown', { 
-      code, 
-      message: updateInfo.errorMessage || '' 
+    return t('mirrorChyan.errors.unknown', {
+      code,
+      message: updateInfo.errorMessage || '',
     });
   }, [updateInfo?.errorCode, updateInfo?.errorMessage, t]);
 
@@ -190,38 +203,30 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
               {t('mirrorChyan.checkFailed')}
             </span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md hover:bg-bg-hover transition-colors"
-          >
+          <button onClick={onClose} className="p-1 rounded-md hover:bg-bg-hover transition-colors">
             <X className="w-4 h-4 text-text-muted" />
           </button>
         </div>
 
         {/* 错误信息 */}
         <div className="p-4 space-y-3">
-          <div className={clsx(
-            'flex items-start gap-2 p-3 rounded-lg border',
-            isCdkError 
-              ? 'bg-warning/10 border-warning/30' 
-              : 'bg-error/10 border-error/30'
-          )}>
-            <AlertCircle className={clsx(
-              'w-4 h-4 mt-0.5 shrink-0',
-              isCdkError ? 'text-warning' : 'text-error'
-            )} />
+          <div
+            className={clsx(
+              'flex items-start gap-2 p-3 rounded-lg border',
+              isCdkError ? 'bg-warning/10 border-warning/30' : 'bg-error/10 border-error/30',
+            )}
+          >
+            <AlertCircle
+              className={clsx(
+                'w-4 h-4 mt-0.5 shrink-0',
+                isCdkError ? 'text-warning' : 'text-error',
+              )}
+            />
             <div className="space-y-1 min-w-0">
-              <p className={clsx(
-                'text-sm',
-                isCdkError ? 'text-warning' : 'text-error'
-              )}>
+              <p className={clsx('text-sm', isCdkError ? 'text-warning' : 'text-error')}>
                 {errorText}
               </p>
-              {isCdkError && (
-                <p className="text-xs text-text-muted">
-                  {t('mirrorChyan.cdkHint')}
-                </p>
-              )}
+              {isCdkError && <p className="text-xs text-text-muted">{t('mirrorChyan.cdkHint')}</p>}
             </div>
           </div>
         </div>
@@ -246,17 +251,16 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
           <span className="text-sm font-medium text-text-primary">
             {t('mirrorChyan.newVersion')}
           </span>
-          <span className="font-mono text-sm text-accent font-semibold">{updateInfo.versionName}</span>
+          <span className="font-mono text-sm text-accent font-semibold">
+            {updateInfo.versionName}
+          </span>
           {updateInfo.channel && updateInfo.channel !== 'stable' && (
             <span className="px-1.5 py-0.5 bg-warning/20 text-warning text-xs rounded font-medium">
               {updateInfo.channel}
             </span>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-md hover:bg-bg-hover transition-colors"
-        >
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-bg-hover transition-colors">
           <X className="w-4 h-4 text-text-muted" />
         </button>
       </div>
@@ -297,12 +301,12 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
         <div className="space-y-2 pt-2 border-t border-border">
           {/* API 错误提示（如 CDK 问题导致无法获取下载链接） */}
           {updateInfo.errorCode && errorText && (
-            <div className={clsx(
-              'flex items-start gap-2 p-2 rounded-lg text-xs',
-              isCdkError 
-                ? 'bg-warning/10 text-warning' 
-                : 'bg-error/10 text-error'
-            )}>
+            <div
+              className={clsx(
+                'flex items-start gap-2 p-2 rounded-lg text-xs',
+                isCdkError ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error',
+              )}
+            >
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>{errorText}</span>
             </div>

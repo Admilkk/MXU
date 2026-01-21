@@ -37,7 +37,7 @@ pub const MAA_INVALID_ID: MaaId = 0;
 
 // ADB 截图方法
 pub type MaaAdbScreencapMethod = u64;
-pub const MAA_ADB_SCREENCAP_DEFAULT: MaaAdbScreencapMethod = 0xFFFFFFFFFFFFFFFF 
+pub const MAA_ADB_SCREENCAP_DEFAULT: MaaAdbScreencapMethod = 0xFFFFFFFFFFFFFFFF
     & !(1 << 3)  // RawByNetcat
     & !(1 << 4)  // MinicapDirect
     & !(1 << 5); // MinicapStream
@@ -90,23 +90,25 @@ impl<T> SendPtr<T> {
     pub fn new(ptr: *mut T) -> Self {
         SendPtr(ptr)
     }
-    
+
     pub fn as_ptr(&self) -> *mut T {
         self.0
     }
-    
+
     pub fn is_null(&self) -> bool {
         self.0.is_null()
     }
 }
 
 // 回调类型
-pub type MaaEventCallback = Option<extern "C" fn(
-    handle: *mut c_void,
-    message: *const c_char,
-    details_json: *const c_char,
-    trans_arg: *mut c_void,
-)>;
+pub type MaaEventCallback = Option<
+    extern "C" fn(
+        handle: *mut c_void,
+        message: *const c_char,
+        details_json: *const c_char,
+        trans_arg: *mut c_void,
+    ),
+>;
 
 // 函数指针类型定义
 type FnMaaVersion = unsafe extern "C" fn() -> *const c_char;
@@ -120,20 +122,40 @@ type FnMaaResourcePostBundle = unsafe extern "C" fn(*mut MaaResource, *const c_c
 type FnMaaResourceStatus = unsafe extern "C" fn(*mut MaaResource, MaaId) -> MaaStatus;
 type FnMaaResourceWait = unsafe extern "C" fn(*mut MaaResource, MaaId) -> MaaStatus;
 type FnMaaResourceLoaded = unsafe extern "C" fn(*mut MaaResource) -> MaaBool;
-type FnMaaResourceAddSink = unsafe extern "C" fn(*mut MaaResource, MaaEventCallback, *mut c_void) -> MaaId;
+type FnMaaResourceAddSink =
+    unsafe extern "C" fn(*mut MaaResource, MaaEventCallback, *mut c_void) -> MaaId;
 
-type FnMaaAdbControllerCreate = unsafe extern "C" fn(*const c_char, *const c_char, MaaAdbScreencapMethod, MaaAdbInputMethod, *const c_char, *const c_char) -> *mut MaaController;
-type FnMaaWin32ControllerCreate = unsafe extern "C" fn(*mut c_void, MaaWin32ScreencapMethod, MaaWin32InputMethod, MaaWin32InputMethod) -> *mut MaaController;
-type FnMaaGamepadControllerCreate = unsafe extern "C" fn(*mut c_void, MaaGamepadType, MaaWin32ScreencapMethod) -> *mut MaaController;
+type FnMaaAdbControllerCreate = unsafe extern "C" fn(
+    *const c_char,
+    *const c_char,
+    MaaAdbScreencapMethod,
+    MaaAdbInputMethod,
+    *const c_char,
+    *const c_char,
+) -> *mut MaaController;
+type FnMaaWin32ControllerCreate = unsafe extern "C" fn(
+    *mut c_void,
+    MaaWin32ScreencapMethod,
+    MaaWin32InputMethod,
+    MaaWin32InputMethod,
+) -> *mut MaaController;
+type FnMaaGamepadControllerCreate = unsafe extern "C" fn(
+    *mut c_void,
+    MaaGamepadType,
+    MaaWin32ScreencapMethod,
+) -> *mut MaaController;
 type FnMaaControllerDestroy = unsafe extern "C" fn(*mut MaaController);
 type FnMaaControllerPostConnection = unsafe extern "C" fn(*mut MaaController) -> MaaId;
 type FnMaaControllerStatus = unsafe extern "C" fn(*mut MaaController, MaaId) -> MaaStatus;
 type FnMaaControllerWait = unsafe extern "C" fn(*mut MaaController, MaaId) -> MaaStatus;
 type FnMaaControllerConnected = unsafe extern "C" fn(*mut MaaController) -> MaaBool;
-type FnMaaControllerSetOption = unsafe extern "C" fn(*mut MaaController, MaaCtrlOption, *const c_void, MaaSize) -> MaaBool;
+type FnMaaControllerSetOption =
+    unsafe extern "C" fn(*mut MaaController, MaaCtrlOption, *const c_void, MaaSize) -> MaaBool;
 type FnMaaControllerPostScreencap = unsafe extern "C" fn(*mut MaaController) -> MaaId;
-type FnMaaControllerCachedImage = unsafe extern "C" fn(*mut MaaController, *mut MaaImageBuffer) -> MaaBool;
-type FnMaaControllerAddSink = unsafe extern "C" fn(*mut MaaController, MaaEventCallback, *mut c_void) -> MaaId;
+type FnMaaControllerCachedImage =
+    unsafe extern "C" fn(*mut MaaController, *mut MaaImageBuffer) -> MaaBool;
+type FnMaaControllerAddSink =
+    unsafe extern "C" fn(*mut MaaController, MaaEventCallback, *mut c_void) -> MaaId;
 
 // ImageBuffer
 type FnMaaImageBufferCreate = unsafe extern "C" fn() -> *mut MaaImageBuffer;
@@ -144,36 +166,57 @@ type FnMaaImageBufferGetEncodedSize = unsafe extern "C" fn(*const MaaImageBuffer
 type FnMaaTaskerCreate = unsafe extern "C" fn() -> *mut MaaTasker;
 type FnMaaTaskerDestroy = unsafe extern "C" fn(*mut MaaTasker);
 type FnMaaTaskerBindResource = unsafe extern "C" fn(*mut MaaTasker, *mut MaaResource) -> MaaBool;
-type FnMaaTaskerBindController = unsafe extern "C" fn(*mut MaaTasker, *mut MaaController) -> MaaBool;
+type FnMaaTaskerBindController =
+    unsafe extern "C" fn(*mut MaaTasker, *mut MaaController) -> MaaBool;
 type FnMaaTaskerInited = unsafe extern "C" fn(*mut MaaTasker) -> MaaBool;
-type FnMaaTaskerPostTask = unsafe extern "C" fn(*mut MaaTasker, *const c_char, *const c_char) -> MaaId;
+type FnMaaTaskerPostTask =
+    unsafe extern "C" fn(*mut MaaTasker, *const c_char, *const c_char) -> MaaId;
 type FnMaaTaskerStatus = unsafe extern "C" fn(*mut MaaTasker, MaaId) -> MaaStatus;
 type FnMaaTaskerWait = unsafe extern "C" fn(*mut MaaTasker, MaaId) -> MaaStatus;
 type FnMaaTaskerRunning = unsafe extern "C" fn(*mut MaaTasker) -> MaaBool;
 type FnMaaTaskerPostStop = unsafe extern "C" fn(*mut MaaTasker) -> MaaId;
-type FnMaaTaskerAddSink = unsafe extern "C" fn(*mut MaaTasker, MaaEventCallback, *mut c_void) -> MaaId;
-type FnMaaTaskerOverridePipeline = unsafe extern "C" fn(*mut MaaTasker, MaaId, *const c_char) -> MaaBool;
+type FnMaaTaskerAddSink =
+    unsafe extern "C" fn(*mut MaaTasker, MaaEventCallback, *mut c_void) -> MaaId;
+type FnMaaTaskerOverridePipeline =
+    unsafe extern "C" fn(*mut MaaTasker, MaaId, *const c_char) -> MaaBool;
 
 type FnMaaToolkitAdbDeviceListCreate = unsafe extern "C" fn() -> *mut MaaToolkitAdbDeviceList;
 type FnMaaToolkitAdbDeviceListDestroy = unsafe extern "C" fn(*mut MaaToolkitAdbDeviceList);
 type FnMaaToolkitAdbDeviceFind = unsafe extern "C" fn(*mut MaaToolkitAdbDeviceList) -> MaaBool;
-type FnMaaToolkitAdbDeviceListSize = unsafe extern "C" fn(*const MaaToolkitAdbDeviceList) -> MaaSize;
-type FnMaaToolkitAdbDeviceListAt = unsafe extern "C" fn(*const MaaToolkitAdbDeviceList, MaaSize) -> *const MaaToolkitAdbDevice;
-type FnMaaToolkitAdbDeviceGetName = unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
-type FnMaaToolkitAdbDeviceGetAdbPath = unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
-type FnMaaToolkitAdbDeviceGetAddress = unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
-type FnMaaToolkitAdbDeviceGetScreencapMethods = unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> MaaAdbScreencapMethod;
-type FnMaaToolkitAdbDeviceGetInputMethods = unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> MaaAdbInputMethod;
-type FnMaaToolkitAdbDeviceGetConfig = unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
+type FnMaaToolkitAdbDeviceListSize =
+    unsafe extern "C" fn(*const MaaToolkitAdbDeviceList) -> MaaSize;
+type FnMaaToolkitAdbDeviceListAt =
+    unsafe extern "C" fn(*const MaaToolkitAdbDeviceList, MaaSize) -> *const MaaToolkitAdbDevice;
+type FnMaaToolkitAdbDeviceGetName =
+    unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
+type FnMaaToolkitAdbDeviceGetAdbPath =
+    unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
+type FnMaaToolkitAdbDeviceGetAddress =
+    unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
+type FnMaaToolkitAdbDeviceGetScreencapMethods =
+    unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> MaaAdbScreencapMethod;
+type FnMaaToolkitAdbDeviceGetInputMethods =
+    unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> MaaAdbInputMethod;
+type FnMaaToolkitAdbDeviceGetConfig =
+    unsafe extern "C" fn(*const MaaToolkitAdbDevice) -> *const c_char;
 
-type FnMaaToolkitDesktopWindowListCreate = unsafe extern "C" fn() -> *mut MaaToolkitDesktopWindowList;
+type FnMaaToolkitDesktopWindowListCreate =
+    unsafe extern "C" fn() -> *mut MaaToolkitDesktopWindowList;
 type FnMaaToolkitDesktopWindowListDestroy = unsafe extern "C" fn(*mut MaaToolkitDesktopWindowList);
-type FnMaaToolkitDesktopWindowFindAll = unsafe extern "C" fn(*mut MaaToolkitDesktopWindowList) -> MaaBool;
-type FnMaaToolkitDesktopWindowListSize = unsafe extern "C" fn(*const MaaToolkitDesktopWindowList) -> MaaSize;
-type FnMaaToolkitDesktopWindowListAt = unsafe extern "C" fn(*const MaaToolkitDesktopWindowList, MaaSize) -> *const MaaToolkitDesktopWindow;
-type FnMaaToolkitDesktopWindowGetHandle = unsafe extern "C" fn(*const MaaToolkitDesktopWindow) -> *mut c_void;
-type FnMaaToolkitDesktopWindowGetClassName = unsafe extern "C" fn(*const MaaToolkitDesktopWindow) -> *const c_char;
-type FnMaaToolkitDesktopWindowGetWindowName = unsafe extern "C" fn(*const MaaToolkitDesktopWindow) -> *const c_char;
+type FnMaaToolkitDesktopWindowFindAll =
+    unsafe extern "C" fn(*mut MaaToolkitDesktopWindowList) -> MaaBool;
+type FnMaaToolkitDesktopWindowListSize =
+    unsafe extern "C" fn(*const MaaToolkitDesktopWindowList) -> MaaSize;
+type FnMaaToolkitDesktopWindowListAt = unsafe extern "C" fn(
+    *const MaaToolkitDesktopWindowList,
+    MaaSize,
+) -> *const MaaToolkitDesktopWindow;
+type FnMaaToolkitDesktopWindowGetHandle =
+    unsafe extern "C" fn(*const MaaToolkitDesktopWindow) -> *mut c_void;
+type FnMaaToolkitDesktopWindowGetClassName =
+    unsafe extern "C" fn(*const MaaToolkitDesktopWindow) -> *const c_char;
+type FnMaaToolkitDesktopWindowGetWindowName =
+    unsafe extern "C" fn(*const MaaToolkitDesktopWindow) -> *const c_char;
 
 // Toolkit - Config
 type FnMaaToolkitConfigInitOption = unsafe extern "C" fn(*const c_char, *const c_char) -> MaaBool;
@@ -181,8 +224,10 @@ type FnMaaToolkitConfigInitOption = unsafe extern "C" fn(*const c_char, *const c
 // AgentClient
 type FnMaaAgentClientCreateV2 = unsafe extern "C" fn(*const MaaStringBuffer) -> *mut MaaAgentClient;
 type FnMaaAgentClientDestroy = unsafe extern "C" fn(*mut MaaAgentClient);
-type FnMaaAgentClientIdentifier = unsafe extern "C" fn(*mut MaaAgentClient, *mut MaaStringBuffer) -> MaaBool;
-type FnMaaAgentClientBindResource = unsafe extern "C" fn(*mut MaaAgentClient, *mut MaaResource) -> MaaBool;
+type FnMaaAgentClientIdentifier =
+    unsafe extern "C" fn(*mut MaaAgentClient, *mut MaaStringBuffer) -> MaaBool;
+type FnMaaAgentClientBindResource =
+    unsafe extern "C" fn(*mut MaaAgentClient, *mut MaaResource) -> MaaBool;
 type FnMaaAgentClientConnect = unsafe extern "C" fn(*mut MaaAgentClient) -> MaaBool;
 type FnMaaAgentClientDisconnect = unsafe extern "C" fn(*mut MaaAgentClient) -> MaaBool;
 type FnMaaAgentClientSetTimeout = unsafe extern "C" fn(*mut MaaAgentClient, i64) -> MaaBool;
@@ -192,15 +237,15 @@ pub struct MaaLibrary {
     _framework_lib: Library,
     _toolkit_lib: Library,
     _agent_client_lib: Library,
-    
+
     // MaaFramework 函数
     pub maa_version: FnMaaVersion,
-    
+
     // StringBuffer
     pub maa_string_buffer_create: FnMaaStringBufferCreate,
     pub maa_string_buffer_destroy: FnMaaStringBufferDestroy,
     pub maa_string_buffer_get: FnMaaStringBufferGet,
-    
+
     // Resource
     pub maa_resource_create: FnMaaResourceCreate,
     pub maa_resource_destroy: FnMaaResourceDestroy,
@@ -209,7 +254,7 @@ pub struct MaaLibrary {
     pub maa_resource_wait: FnMaaResourceWait,
     pub maa_resource_loaded: FnMaaResourceLoaded,
     pub maa_resource_add_sink: FnMaaResourceAddSink,
-    
+
     // Controller
     pub maa_adb_controller_create: FnMaaAdbControllerCreate,
     pub maa_win32_controller_create: FnMaaWin32ControllerCreate,
@@ -223,13 +268,13 @@ pub struct MaaLibrary {
     pub maa_controller_post_screencap: FnMaaControllerPostScreencap,
     pub maa_controller_cached_image: FnMaaControllerCachedImage,
     pub maa_controller_add_sink: FnMaaControllerAddSink,
-    
+
     // ImageBuffer
     pub maa_image_buffer_create: FnMaaImageBufferCreate,
     pub maa_image_buffer_destroy: FnMaaImageBufferDestroy,
     pub maa_image_buffer_get_encoded: FnMaaImageBufferGetEncoded,
     pub maa_image_buffer_get_encoded_size: FnMaaImageBufferGetEncodedSize,
-    
+
     // Tasker
     pub maa_tasker_create: FnMaaTaskerCreate,
     pub maa_tasker_destroy: FnMaaTaskerDestroy,
@@ -244,7 +289,7 @@ pub struct MaaLibrary {
     pub maa_tasker_add_sink: FnMaaTaskerAddSink,
     /// 可选函数：旧版本 MaaFramework 可能不支持
     pub maa_tasker_override_pipeline: Option<FnMaaTaskerOverridePipeline>,
-    
+
     // Toolkit - ADB Device
     pub maa_toolkit_adb_device_list_create: FnMaaToolkitAdbDeviceListCreate,
     pub maa_toolkit_adb_device_list_destroy: FnMaaToolkitAdbDeviceListDestroy,
@@ -257,7 +302,7 @@ pub struct MaaLibrary {
     pub maa_toolkit_adb_device_get_screencap_methods: FnMaaToolkitAdbDeviceGetScreencapMethods,
     pub maa_toolkit_adb_device_get_input_methods: FnMaaToolkitAdbDeviceGetInputMethods,
     pub maa_toolkit_adb_device_get_config: FnMaaToolkitAdbDeviceGetConfig,
-    
+
     // Toolkit - Desktop Window
     pub maa_toolkit_desktop_window_list_create: FnMaaToolkitDesktopWindowListCreate,
     pub maa_toolkit_desktop_window_list_destroy: FnMaaToolkitDesktopWindowListDestroy,
@@ -267,10 +312,10 @@ pub struct MaaLibrary {
     pub maa_toolkit_desktop_window_get_handle: FnMaaToolkitDesktopWindowGetHandle,
     pub maa_toolkit_desktop_window_get_class_name: FnMaaToolkitDesktopWindowGetClassName,
     pub maa_toolkit_desktop_window_get_window_name: FnMaaToolkitDesktopWindowGetWindowName,
-    
+
     // Toolkit - Config
     pub maa_toolkit_config_init_option: FnMaaToolkitConfigInitOption,
-    
+
     // AgentClient
     pub maa_agent_client_create_v2: FnMaaAgentClientCreateV2,
     pub maa_agent_client_destroy: FnMaaAgentClientDestroy,
@@ -357,16 +402,17 @@ impl MaaLibrary {
                 )
             })?;
             info!("MaaAgentClient loaded successfully");
-            
+
             // 加载函数宏 - 使用 transmute 进行类型转换
             macro_rules! load_fn {
                 ($lib:expr, $name:literal) => {{
-                    let sym = $lib.get::<*const ()>($name.as_bytes())
+                    let sym = $lib
+                        .get::<*const ()>($name.as_bytes())
                         .map_err(|e| format!("Failed to load {}: {}", $name, e))?;
                     std::mem::transmute(*sym)
                 }};
             }
-            
+
             // 可选加载函数宏 - 加载失败返回 None 而非错误（用于向后兼容旧版本 DLL）
             macro_rules! load_fn_optional {
                 ($lib:expr, $name:literal) => {{
@@ -379,16 +425,16 @@ impl MaaLibrary {
                     }
                 }};
             }
-            
+
             Ok(Self {
                 // Version
                 maa_version: load_fn!(framework_lib, "MaaVersion"),
-                
+
                 // StringBuffer
                 maa_string_buffer_create: load_fn!(framework_lib, "MaaStringBufferCreate"),
                 maa_string_buffer_destroy: load_fn!(framework_lib, "MaaStringBufferDestroy"),
                 maa_string_buffer_get: load_fn!(framework_lib, "MaaStringBufferGet"),
-                
+
                 // Resource
                 maa_resource_create: load_fn!(framework_lib, "MaaResourceCreate"),
                 maa_resource_destroy: load_fn!(framework_lib, "MaaResourceDestroy"),
@@ -397,27 +443,39 @@ impl MaaLibrary {
                 maa_resource_wait: load_fn!(framework_lib, "MaaResourceWait"),
                 maa_resource_loaded: load_fn!(framework_lib, "MaaResourceLoaded"),
                 maa_resource_add_sink: load_fn!(framework_lib, "MaaResourceAddSink"),
-                
+
                 // Controller
                 maa_adb_controller_create: load_fn!(framework_lib, "MaaAdbControllerCreate"),
                 maa_win32_controller_create: load_fn!(framework_lib, "MaaWin32ControllerCreate"),
-                maa_gamepad_controller_create: load_fn!(framework_lib, "MaaGamepadControllerCreate"),
+                maa_gamepad_controller_create: load_fn!(
+                    framework_lib,
+                    "MaaGamepadControllerCreate"
+                ),
                 maa_controller_destroy: load_fn!(framework_lib, "MaaControllerDestroy"),
-                maa_controller_post_connection: load_fn!(framework_lib, "MaaControllerPostConnection"),
+                maa_controller_post_connection: load_fn!(
+                    framework_lib,
+                    "MaaControllerPostConnection"
+                ),
                 maa_controller_status: load_fn!(framework_lib, "MaaControllerStatus"),
                 maa_controller_wait: load_fn!(framework_lib, "MaaControllerWait"),
                 maa_controller_connected: load_fn!(framework_lib, "MaaControllerConnected"),
                 maa_controller_set_option: load_fn!(framework_lib, "MaaControllerSetOption"),
-                maa_controller_post_screencap: load_fn!(framework_lib, "MaaControllerPostScreencap"),
+                maa_controller_post_screencap: load_fn!(
+                    framework_lib,
+                    "MaaControllerPostScreencap"
+                ),
                 maa_controller_cached_image: load_fn!(framework_lib, "MaaControllerCachedImage"),
                 maa_controller_add_sink: load_fn!(framework_lib, "MaaControllerAddSink"),
-                
+
                 // ImageBuffer
                 maa_image_buffer_create: load_fn!(framework_lib, "MaaImageBufferCreate"),
                 maa_image_buffer_destroy: load_fn!(framework_lib, "MaaImageBufferDestroy"),
                 maa_image_buffer_get_encoded: load_fn!(framework_lib, "MaaImageBufferGetEncoded"),
-                maa_image_buffer_get_encoded_size: load_fn!(framework_lib, "MaaImageBufferGetEncodedSize"),
-                
+                maa_image_buffer_get_encoded_size: load_fn!(
+                    framework_lib,
+                    "MaaImageBufferGetEncodedSize"
+                ),
+
                 // Tasker
                 maa_tasker_create: load_fn!(framework_lib, "MaaTaskerCreate"),
                 maa_tasker_destroy: load_fn!(framework_lib, "MaaTaskerDestroy"),
@@ -430,50 +488,110 @@ impl MaaLibrary {
                 maa_tasker_running: load_fn!(framework_lib, "MaaTaskerRunning"),
                 maa_tasker_post_stop: load_fn!(framework_lib, "MaaTaskerPostStop"),
                 maa_tasker_add_sink: load_fn!(framework_lib, "MaaTaskerAddSink"),
-                maa_tasker_override_pipeline: load_fn_optional!(framework_lib, "MaaTaskerOverridePipeline"),
-                
+                maa_tasker_override_pipeline: load_fn_optional!(
+                    framework_lib,
+                    "MaaTaskerOverridePipeline"
+                ),
+
                 // Toolkit - ADB Device
-                maa_toolkit_adb_device_list_create: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceListCreate"),
-                maa_toolkit_adb_device_list_destroy: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceListDestroy"),
+                maa_toolkit_adb_device_list_create: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceListCreate"
+                ),
+                maa_toolkit_adb_device_list_destroy: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceListDestroy"
+                ),
                 maa_toolkit_adb_device_find: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceFind"),
-                maa_toolkit_adb_device_list_size: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceListSize"),
+                maa_toolkit_adb_device_list_size: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceListSize"
+                ),
                 maa_toolkit_adb_device_list_at: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceListAt"),
-                maa_toolkit_adb_device_get_name: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceGetName"),
-                maa_toolkit_adb_device_get_adb_path: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceGetAdbPath"),
-                maa_toolkit_adb_device_get_address: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceGetAddress"),
-                maa_toolkit_adb_device_get_screencap_methods: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceGetScreencapMethods"),
-                maa_toolkit_adb_device_get_input_methods: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceGetInputMethods"),
-                maa_toolkit_adb_device_get_config: load_fn!(toolkit_lib, "MaaToolkitAdbDeviceGetConfig"),
-                
+                maa_toolkit_adb_device_get_name: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceGetName"
+                ),
+                maa_toolkit_adb_device_get_adb_path: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceGetAdbPath"
+                ),
+                maa_toolkit_adb_device_get_address: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceGetAddress"
+                ),
+                maa_toolkit_adb_device_get_screencap_methods: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceGetScreencapMethods"
+                ),
+                maa_toolkit_adb_device_get_input_methods: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceGetInputMethods"
+                ),
+                maa_toolkit_adb_device_get_config: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitAdbDeviceGetConfig"
+                ),
+
                 // Toolkit - Desktop Window
-                maa_toolkit_desktop_window_list_create: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowListCreate"),
-                maa_toolkit_desktop_window_list_destroy: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowListDestroy"),
-                maa_toolkit_desktop_window_find_all: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowFindAll"),
-                maa_toolkit_desktop_window_list_size: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowListSize"),
-                maa_toolkit_desktop_window_list_at: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowListAt"),
-                maa_toolkit_desktop_window_get_handle: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowGetHandle"),
-                maa_toolkit_desktop_window_get_class_name: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowGetClassName"),
-                maa_toolkit_desktop_window_get_window_name: load_fn!(toolkit_lib, "MaaToolkitDesktopWindowGetWindowName"),
-                
+                maa_toolkit_desktop_window_list_create: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowListCreate"
+                ),
+                maa_toolkit_desktop_window_list_destroy: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowListDestroy"
+                ),
+                maa_toolkit_desktop_window_find_all: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowFindAll"
+                ),
+                maa_toolkit_desktop_window_list_size: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowListSize"
+                ),
+                maa_toolkit_desktop_window_list_at: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowListAt"
+                ),
+                maa_toolkit_desktop_window_get_handle: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowGetHandle"
+                ),
+                maa_toolkit_desktop_window_get_class_name: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowGetClassName"
+                ),
+                maa_toolkit_desktop_window_get_window_name: load_fn!(
+                    toolkit_lib,
+                    "MaaToolkitDesktopWindowGetWindowName"
+                ),
+
                 // Toolkit - Config
                 maa_toolkit_config_init_option: load_fn!(toolkit_lib, "MaaToolkitConfigInitOption"),
-                
+
                 // AgentClient
                 maa_agent_client_create_v2: load_fn!(agent_client_lib, "MaaAgentClientCreateV2"),
                 maa_agent_client_destroy: load_fn!(agent_client_lib, "MaaAgentClientDestroy"),
                 maa_agent_client_identifier: load_fn!(agent_client_lib, "MaaAgentClientIdentifier"),
-                maa_agent_client_bind_resource: load_fn!(agent_client_lib, "MaaAgentClientBindResource"),
+                maa_agent_client_bind_resource: load_fn!(
+                    agent_client_lib,
+                    "MaaAgentClientBindResource"
+                ),
                 maa_agent_client_connect: load_fn!(agent_client_lib, "MaaAgentClientConnect"),
                 maa_agent_client_disconnect: load_fn!(agent_client_lib, "MaaAgentClientDisconnect"),
-                maa_agent_client_set_timeout: load_fn!(agent_client_lib, "MaaAgentClientSetTimeout"),
-                
+                maa_agent_client_set_timeout: load_fn!(
+                    agent_client_lib,
+                    "MaaAgentClientSetTimeout"
+                ),
+
                 _framework_lib: framework_lib,
                 _toolkit_lib: toolkit_lib,
                 _agent_client_lib: agent_client_lib,
             })
         }
     }
-    
+
     pub fn version(&self) -> String {
         unsafe {
             let ptr = (self.maa_version)();
@@ -500,10 +618,7 @@ pub fn init_maa_library(lib_dir: &Path) -> Result<(), String> {
     let user_path_str = exe_dir.to_string_lossy();
     let user_path = to_cstring(&user_path_str);
     let default_json = to_cstring("{}");
-    debug!(
-        "MaaToolkitConfigInitOption user_path: {}",
-        user_path_str
-    );
+    debug!("MaaToolkitConfigInitOption user_path: {}", user_path_str);
     let result =
         unsafe { (lib.maa_toolkit_config_init_option)(user_path.as_ptr(), default_json.as_ptr()) };
     debug!("MaaToolkitConfigInitOption result: {}", result);
@@ -531,7 +646,7 @@ pub fn get_maa_version_standalone(lib_dir: &Path) -> Option<String> {
             return Some(version.clone());
         }
     }
-    
+
     // 尝试从已加载的库获取
     if let Some(version) = get_maa_version() {
         // 缓存结果
@@ -540,7 +655,7 @@ pub fn get_maa_version_standalone(lib_dir: &Path) -> Option<String> {
         }
         return Some(version);
     }
-    
+
     // 独立加载 MaaFramework.dll 仅获取版本
     #[cfg(windows)]
     let framework_path = lib_dir.join("MaaFramework.dll");
@@ -548,7 +663,7 @@ pub fn get_maa_version_standalone(lib_dir: &Path) -> Option<String> {
     let framework_path = lib_dir.join("libMaaFramework.dylib");
     #[cfg(target_os = "linux")]
     let framework_path = lib_dir.join("libMaaFramework.so");
-    
+
     let version = unsafe {
         let lib = Library::new(&framework_path).ok()?;
         let sym = lib.get::<*const ()>(b"MaaVersion").ok()?;
@@ -561,14 +676,14 @@ pub fn get_maa_version_standalone(lib_dir: &Path) -> Option<String> {
         // 注意：这里 lib 会在作用域结束时被 drop，但版本字符串已经复制出来了
         Some(version)
     };
-    
+
     // 缓存结果
     if let Some(ref v) = version {
         if let Ok(mut guard) = CACHED_VERSION.lock() {
             *guard = Some(v.clone());
         }
     }
-    
+
     version
 }
 

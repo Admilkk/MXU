@@ -63,7 +63,8 @@ export default {
       noSavedDevice: 'No saved device configuration',
       connectFailed: 'Auto connect failed',
       resourceFailed: 'Resource loading failed',
-      needConfig: 'Please connect device and load resource first, or save device config in connection panel',
+      needConfig:
+        'Please connect device and load resource first, or save device config in connection panel',
     },
   },
 
@@ -104,7 +105,7 @@ export default {
     no: 'No',
     invalidInput: 'Invalid input format',
   },
-  
+
   // Option Editor
   optionEditor: {
     loadingDescription: 'Loading description...',
@@ -304,7 +305,8 @@ export default {
     cdk: 'MirrorChyan CDK',
     cdkPlaceholder: 'Enter your CDK (optional)',
     serviceName: 'MirrorChyan',
-    cdkHintAfterLink: ' is an independent third-party accelerated download service that requires a paid subscription, not a fee charged by "{{projectName}}". Its operating costs are covered by subscription revenue, with a portion supporting project developers. Subscribe for high-speed downloads while supporting ongoing development. Without a CDK, downloads will fall back to GitHub. If that fails, please configure a network proxy.',
+    cdkHintAfterLink:
+      ' is an independent third-party accelerated download service that requires a paid subscription, not a fee charged by "{{projectName}}". Its operating costs are covered by subscription revenue, with a portion supporting project developers. Subscribe for high-speed downloads while supporting ongoing development. Without a CDK, downloads will fall back to GitHub. If that fails, please configure a network proxy.',
     getCdk: 'No CDKey? Subscribe Now',
     cdkHint: 'Please check if your CDK is correct or has expired',
     checkUpdate: 'Check for Updates',
@@ -424,7 +426,7 @@ export default {
     closeOtherTabs: 'Close Other Tabs',
     closeAllTabs: 'Close All Tabs',
     closeTabsToRight: 'Close Tabs to the Right',
-    
+
     // Task context menu
     addTask: 'Add Task',
     duplicateTask: 'Duplicate Task',
@@ -442,7 +444,7 @@ export default {
     deselectAll: 'Deselect All',
     expandAllTasks: 'Expand All',
     collapseAllTasks: 'Collapse All',
-    
+
     // Screenshot panel context menu
     reconnect: 'Reconnect',
     forceRefresh: 'Force Refresh',
@@ -451,11 +453,11 @@ export default {
     fullscreen: 'Fullscreen',
     saveScreenshot: 'Save Screenshot',
     copyScreenshot: 'Copy Screenshot',
-    
+
     // Connection panel context menu
     refreshDevices: 'Refresh Device List',
     disconnect: 'Disconnect',
-    
+
     // Common
     openFolder: 'Open Containing Folder',
   },
@@ -463,7 +465,8 @@ export default {
   // Version warning
   versionWarning: {
     title: 'MaaFramework Version Too Low',
-    message: 'Current MaaFramework version ({{current}}) is lower than the minimum supported version ({{minimum}}). Some features may not work properly.',
+    message:
+      'Current MaaFramework version ({{current}}) is lower than the minimum supported version ({{minimum}}). Some features may not work properly.',
     suggestion: 'Please contact the project developer to update MaaFramework.',
     understand: 'I Understand',
   },

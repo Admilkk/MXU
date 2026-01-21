@@ -63,7 +63,7 @@ async function loadInterfaceFromLocal(interfacePath: string): Promise<ProjectInt
  */
 async function loadTranslationsFromLocal(
   pi: ProjectInterface,
-  basePath: string
+  basePath: string,
 ): Promise<Record<string, Record<string, string>>> {
   const translations: Record<string, Record<string, string>> = {};
 
@@ -122,7 +122,7 @@ async function loadInterfaceFromHttp(path: string): Promise<ProjectInterface> {
  */
 async function loadTranslationsFromHttp(
   pi: ProjectInterface,
-  basePath: string
+  basePath: string,
 ): Promise<Record<string, Record<string, string>>> {
   const translations: Record<string, Record<string, string>> = {};
 
@@ -161,9 +161,9 @@ function getDirectoryFromPath(filePath: string): string {
 
 /**
  * 加载 interface.json
- * 
+ *
  * basePath 是 interface.json 所在目录的绝对路径，所有相对路径（翻译文件、资源、图标等）都基于此目录
- * 
+ *
  * Tauri 环境：从 exe 同目录加载，basePath 为 exe 目录的绝对路径
  * 浏览器环境：从 HTTP 根路径加载（需要 public/interface.json），basePath 为空
  */
@@ -180,7 +180,7 @@ export async function autoLoadInterface(): Promise<LoadResult> {
     const exeDir = await getExeDir();
     const basePath = relativeBasePath ? `${exeDir}/${relativeBasePath}` : exeDir;
     log.info('basePath (绝对路径):', basePath);
-    
+
     const pi = await loadInterfaceFromLocal(interfacePath);
     const translations = await loadTranslationsFromLocal(pi, relativeBasePath);
     return { interface: pi, translations, basePath };
@@ -190,7 +190,10 @@ export async function autoLoadInterface(): Promise<LoadResult> {
   const httpPath = `/${interfacePath}`;
   if (await httpFileExists(httpPath)) {
     const pi = await loadInterfaceFromHttp(httpPath);
-    const translations = await loadTranslationsFromHttp(pi, relativeBasePath ? `/${relativeBasePath}` : '');
+    const translations = await loadTranslationsFromHttp(
+      pi,
+      relativeBasePath ? `/${relativeBasePath}` : '',
+    );
     return { interface: pi, translations, basePath: relativeBasePath };
   }
 

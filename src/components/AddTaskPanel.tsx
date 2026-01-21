@@ -43,8 +43,7 @@ export function AddTaskPanel() {
       const label = resolveI18nText(task.label, langKey) || task.name;
       const searchLower = searchQuery.toLowerCase();
       return (
-        task.name.toLowerCase().includes(searchLower) ||
-        label.toLowerCase().includes(searchLower)
+        task.name.toLowerCase().includes(searchLower) || label.toLowerCase().includes(searchLower)
       );
     });
   }, [projectInterface, searchQuery, resolveI18nText, langKey]);
@@ -54,41 +53,41 @@ export function AddTaskPanel() {
 
     const task = projectInterface.task.find((t) => t.name === taskName);
     if (!task) return;
-    
+
     // 先添加任务到列表
     addTaskToInstance(instance.id, task);
-    
+
     // 如果实例正在运行，立即调用 PostTask 追加到执行队列
     if (instance.isRunning) {
       try {
         // 使用 getState() 获取最新状态（zustand 状态更新是同步的）
         const latestState = useAppStore.getState();
-        const updatedInstance = latestState.instances.find(i => i.id === instance.id);
+        const updatedInstance = latestState.instances.find((i) => i.id === instance.id);
         const addedTask = updatedInstance?.selectedTasks
-          .filter(t => t.taskName === taskName)
+          .filter((t) => t.taskName === taskName)
           .pop();
-        
+
         if (!addedTask) {
           log.warn('无法找到刚添加的任务');
           return;
         }
-        
+
         // 构建 pipeline override
         const pipelineOverride = generateTaskPipelineOverride(addedTask, projectInterface);
-        
+
         log.info('运行中追加任务:', task.entry, ', pipelineOverride:', pipelineOverride);
-        
+
         // 调用 PostTask
         const maaTaskId = await maaService.runTask(instance.id, task.entry, pipelineOverride);
-        
+
         log.info('任务已追加, maaTaskId:', maaTaskId);
-        
+
         // 注册映射关系
         registerMaaTaskMapping(instance.id, maaTaskId, addedTask.id);
-        
+
         // 设置任务状态为 pending
         setTaskRunStatus(instance.id, addedTask.id, 'pending');
-        
+
         // 追加到任务队列
         appendPendingTaskId(instance.id, maaTaskId);
       } catch (err) {
@@ -115,7 +114,7 @@ export function AddTaskPanel() {
             className={clsx(
               'w-full pl-9 pr-3 py-2 text-sm rounded-md border border-border',
               'bg-bg-secondary text-text-primary placeholder:text-text-muted',
-              'focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20'
+              'focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20',
             )}
           />
         </div>
@@ -139,7 +138,7 @@ export function AddTaskPanel() {
                   onClick={() => handleAddTask(task.name)}
                   className={clsx(
                     'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left',
-                    'bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border hover:border-accent'
+                    'bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border hover:border-accent',
                   )}
                 >
                   <Plus className="w-4 h-4 flex-shrink-0 text-accent" />

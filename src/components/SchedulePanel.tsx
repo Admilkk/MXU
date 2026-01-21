@@ -45,14 +45,14 @@ function PolicyCard({
 
   const handleToggleWeekday = (day: number) => {
     const newWeekdays = policy.weekdays.includes(day)
-      ? policy.weekdays.filter(d => d !== day)
+      ? policy.weekdays.filter((d) => d !== day)
       : [...policy.weekdays, day].sort((a, b) => a - b);
     onUpdate({ weekdays: newWeekdays });
   };
 
   const handleToggleHour = (hour: number) => {
     const newHours = policy.hours.includes(hour)
-      ? policy.hours.filter(h => h !== hour)
+      ? policy.hours.filter((h) => h !== hour)
       : [...policy.hours, hour].sort((a, b) => a - b);
     onUpdate({ hours: newHours });
   };
@@ -79,7 +79,7 @@ function PolicyCard({
   const formatWeekdays = () => {
     if (policy.weekdays.length === 0) return t('schedule.noWeekdays');
     if (policy.weekdays.length === 7) return t('schedule.everyday');
-    return policy.weekdays.map(d => weekdayLabels[d]).join(', ');
+    return policy.weekdays.map((d) => weekdayLabels[d]).join(', ');
   };
 
   // 格式化显示已选时间
@@ -87,16 +87,18 @@ function PolicyCard({
     if (policy.hours.length === 0) return t('schedule.noHours');
     if (policy.hours.length === 24) return t('schedule.everyHour');
     if (policy.hours.length <= 3) {
-      return policy.hours.map(h => `${h.toString().padStart(2, '0')}:00`).join(', ');
+      return policy.hours.map((h) => `${h.toString().padStart(2, '0')}:00`).join(', ');
     }
     return `${policy.hours.length} ${t('schedule.hoursSelected')}`;
   };
 
   return (
-    <div className={clsx(
-      'bg-bg-secondary rounded-lg border border-border overflow-hidden',
-      !policy.enabled && 'opacity-60'
-    )}>
+    <div
+      className={clsx(
+        'bg-bg-secondary rounded-lg border border-border overflow-hidden',
+        !policy.enabled && 'opacity-60',
+      )}
+    >
       {/* 卡片头部 */}
       <div className="flex items-center gap-2 p-3">
         {/* 启用开关 */}
@@ -120,10 +122,7 @@ function PolicyCard({
         </div>
 
         {/* 展开/折叠 */}
-        <button
-          onClick={onToggleExpand}
-          className="p-1 rounded hover:bg-bg-hover"
-        >
+        <button onClick={onToggleExpand} className="p-1 rounded hover:bg-bg-hover">
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-text-secondary" />
           ) : (
@@ -161,7 +160,7 @@ function PolicyCard({
               className={clsx(
                 'w-full px-2 py-1.5 text-sm rounded border',
                 'bg-bg-primary text-text-primary border-border',
-                'focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20'
+                'focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20',
               )}
             />
           </div>
@@ -179,12 +178,12 @@ function PolicyCard({
                   'px-2 py-1 text-xs rounded border transition-colors',
                   policy.weekdays.length === 7
                     ? 'bg-accent text-white border-accent'
-                    : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent'
+                    : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent',
                 )}
               >
                 {t('schedule.everyday')}
               </button>
-              {[1, 2, 3, 4, 5, 6, 0].map(day => (
+              {[1, 2, 3, 4, 5, 6, 0].map((day) => (
                 <button
                   key={day}
                   onClick={() => handleToggleWeekday(day)}
@@ -192,7 +191,7 @@ function PolicyCard({
                     'px-2 py-1 text-xs rounded border transition-colors',
                     policy.weekdays.includes(day)
                       ? 'bg-accent text-white border-accent'
-                      : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent'
+                      : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent',
                   )}
                 >
                   {weekdayLabels[day]}
@@ -205,7 +204,9 @@ function PolicyCard({
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-text-secondary">
               {t('schedule.startTime')}
-              <span className="text-text-muted font-normal ml-1">({t('schedule.multiSelect')})</span>
+              <span className="text-text-muted font-normal ml-1">
+                ({t('schedule.multiSelect')})
+              </span>
             </label>
             {/* 时间网格 */}
             <div className="grid grid-cols-7 gap-1">
@@ -215,12 +216,12 @@ function PolicyCard({
                   'px-1 py-1.5 text-xs rounded border transition-colors',
                   policy.hours.length === 24
                     ? 'bg-accent text-white border-accent'
-                    : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent'
+                    : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent',
                 )}
               >
                 {t('schedule.all')}
               </button>
-              {HOURS.map(hour => (
+              {HOURS.map((hour) => (
                 <button
                   key={hour}
                   onClick={() => handleToggleHour(hour)}
@@ -228,16 +229,14 @@ function PolicyCard({
                     'px-1 py-1.5 text-xs rounded border transition-colors',
                     policy.hours.includes(hour)
                       ? 'bg-accent text-white border-accent'
-                      : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent'
+                      : 'bg-bg-primary text-text-secondary border-border hover:border-accent hover:text-accent',
                   )}
                 >
                   {hour.toString().padStart(2, '0')}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-text-muted">
-              {t('schedule.timeZoneHint')}
-            </p>
+            <p className="text-xs text-text-muted">{t('schedule.timeZoneHint')}</p>
           </div>
 
           {/* 摘要显示 */}
@@ -295,20 +294,24 @@ export function SchedulePanel({ instanceId, onClose }: SchedulePanelProps) {
     setExpandedPolicyId(newPolicy.id);
   }, [instanceId, policies, t, updateInstance]);
 
-  const handleUpdatePolicy = useCallback((policyId: string, updates: Partial<SchedulePolicy>) => {
-    const updatedPolicies = policies.map(p =>
-      p.id === policyId ? { ...p, ...updates } : p
-    );
-    updateInstance(instanceId, { schedulePolicies: updatedPolicies });
-  }, [instanceId, policies, updateInstance]);
+  const handleUpdatePolicy = useCallback(
+    (policyId: string, updates: Partial<SchedulePolicy>) => {
+      const updatedPolicies = policies.map((p) => (p.id === policyId ? { ...p, ...updates } : p));
+      updateInstance(instanceId, { schedulePolicies: updatedPolicies });
+    },
+    [instanceId, policies, updateInstance],
+  );
 
-  const handleDeletePolicy = useCallback((policyId: string) => {
-    const updatedPolicies = policies.filter(p => p.id !== policyId);
-    updateInstance(instanceId, { schedulePolicies: updatedPolicies });
-    if (expandedPolicyId === policyId) {
-      setExpandedPolicyId(null);
-    }
-  }, [instanceId, policies, expandedPolicyId, updateInstance]);
+  const handleDeletePolicy = useCallback(
+    (policyId: string) => {
+      const updatedPolicies = policies.filter((p) => p.id !== policyId);
+      updateInstance(instanceId, { schedulePolicies: updatedPolicies });
+      if (expandedPolicyId === policyId) {
+        setExpandedPolicyId(null);
+      }
+    },
+    [instanceId, policies, expandedPolicyId, updateInstance],
+  );
 
   return (
     <div
@@ -316,21 +319,16 @@ export function SchedulePanel({ instanceId, onClose }: SchedulePanelProps) {
       className={clsx(
         'absolute bottom-full right-0 mb-2 w-80',
         'bg-bg-primary border border-border rounded-lg shadow-lg',
-        'z-50'
+        'z-50',
       )}
     >
       {/* 头部 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-accent" />
-          <span className="text-sm font-medium text-text-primary">
-            {t('schedule.title')}
-          </span>
+          <span className="text-sm font-medium text-text-primary">{t('schedule.title')}</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded hover:bg-bg-hover"
-        >
+        <button onClick={onClose} className="p-1 rounded hover:bg-bg-hover">
           <X className="w-4 h-4 text-text-muted" />
         </button>
       </div>
@@ -344,16 +342,16 @@ export function SchedulePanel({ instanceId, onClose }: SchedulePanelProps) {
             <p className="text-xs text-text-muted mt-1">{t('schedule.noPoliciesHint')}</p>
           </div>
         ) : (
-          policies.map(policy => (
+          policies.map((policy) => (
             <PolicyCard
               key={policy.id}
               policy={policy}
               onUpdate={(updates) => handleUpdatePolicy(policy.id, updates)}
               onDelete={() => handleDeletePolicy(policy.id)}
               isExpanded={expandedPolicyId === policy.id}
-              onToggleExpand={() => setExpandedPolicyId(
-                expandedPolicyId === policy.id ? null : policy.id
-              )}
+              onToggleExpand={() =>
+                setExpandedPolicyId(expandedPolicyId === policy.id ? null : policy.id)
+              }
             />
           ))
         )}
@@ -368,7 +366,7 @@ export function SchedulePanel({ instanceId, onClose }: SchedulePanelProps) {
             'text-sm text-text-secondary',
             'border border-dashed border-border',
             'hover:bg-bg-hover hover:border-border-strong',
-            'transition-colors'
+            'transition-colors',
           )}
         >
           <Plus className="w-4 h-4" />
@@ -378,9 +376,7 @@ export function SchedulePanel({ instanceId, onClose }: SchedulePanelProps) {
 
       {/* 提示信息 */}
       <div className="px-4 py-2 border-t border-border bg-bg-tertiary rounded-b-lg">
-        <p className="text-xs text-text-muted">
-          {t('schedule.hint')}
-        </p>
+        <p className="text-xs text-text-muted">{t('schedule.hint')}</p>
       </div>
     </div>
   );

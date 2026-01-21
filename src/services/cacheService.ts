@@ -48,7 +48,7 @@ function urlToFilename(url: string): string {
   let hash = 0;
   for (let i = 0; i < url.length; i++) {
     const char = url.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // 转换为 32 位整数
   }
   // 转换为正数的 16 进制字符串
@@ -56,7 +56,11 @@ function urlToFilename(url: string): string {
   // 提取 URL 中的域名和路径末尾作为可读部分
   const urlObj = new URL(url);
   const pathParts = urlObj.pathname.split('/').filter(Boolean);
-  const readablePart = pathParts.slice(-2).join('_').replace(/[^a-zA-Z0-9_-]/g, '') || 'data';
+  const readablePart =
+    pathParts
+      .slice(-2)
+      .join('_')
+      .replace(/[^a-zA-Z0-9_-]/g, '') || 'data';
   return `${hashStr}_${readablePart}`.slice(0, 100);
 }
 
@@ -132,7 +136,7 @@ async function saveCacheIndex(basePath: string): Promise<void> {
     const cacheDir = getCacheDir(basePath);
     const indexPath = getCacheIndexPath(basePath);
 
-    if (!await exists(cacheDir)) {
+    if (!(await exists(cacheDir))) {
       await mkdir(cacheDir, { recursive: true });
     }
 
@@ -171,7 +175,7 @@ async function writeCacheData(basePath: string, filename: string, data: string):
     const { writeTextFile, mkdir, exists } = await import('@tauri-apps/plugin-fs');
     const cacheDir = getCacheDir(basePath);
 
-    if (!await exists(cacheDir)) {
+    if (!(await exists(cacheDir))) {
       await mkdir(cacheDir, { recursive: true });
     }
 
@@ -200,14 +204,14 @@ export interface CachedFetchResult {
 
 /**
  * 带 ETag 缓存的 fetch 请求
- * 
+ *
  * @param url 请求的 URL
  * @param options 选项
  * @returns 响应数据和缓存状态
  */
 export async function cachedFetch(
   url: string,
-  options: CachedFetchOptions = {}
+  options: CachedFetchOptions = {},
 ): Promise<CachedFetchResult> {
   const { basePath = '.', headers = {} } = options;
 
@@ -272,18 +276,18 @@ export async function cachedFetch(
     // 如果有 ETag，保存到缓存
     if (newEtag) {
       const filename = urlToFilename(url);
-      
+
       // 更新缓存索引
       index.entries[url] = {
         etag: newEtag,
         filename,
         timestamp: Date.now(),
       };
-      
+
       // 保存缓存数据和索引
       await writeCacheData(basePath, filename, data);
       await saveCacheIndex(basePath);
-      
+
       log.debug(`已缓存数据: ${url}, ETag: ${newEtag}`);
     }
 
@@ -314,7 +318,10 @@ export async function cachedFetch(
  * @param basePath 资源基础路径
  * @param maxAge 最大缓存时间（毫秒），默认 7 天
  */
-export async function cleanExpiredCache(basePath: string = '.', maxAge: number = 7 * 24 * 60 * 60 * 1000): Promise<void> {
+export async function cleanExpiredCache(
+  basePath: string = '.',
+  maxAge: number = 7 * 24 * 60 * 60 * 1000,
+): Promise<void> {
   if (!isTauri()) return;
 
   try {
@@ -337,7 +344,7 @@ export async function cleanExpiredCache(basePath: string = '.', maxAge: number =
     for (const url of expiredUrls) {
       const entry = index.entries[url];
       const dataPath = getCacheDataPath(basePath, entry.filename);
-      
+
       if (await exists(dataPath)) {
         await remove(dataPath);
       }
@@ -389,7 +396,7 @@ export async function getCacheStats(basePath: string = '.'): Promise<{
     return { entryCount: 0, oldestTimestamp: null, newestTimestamp: null };
   }
 
-  const timestamps = entries.map(e => e.timestamp);
+  const timestamps = entries.map((e) => e.timestamp);
   return {
     entryCount: entries.length,
     oldestTimestamp: Math.min(...timestamps),

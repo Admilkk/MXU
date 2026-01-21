@@ -104,7 +104,7 @@ export default {
     no: '아니오',
     invalidInput: '입력 형식이 올바르지 않습니다',
   },
-  
+
   // 옵션 에디터
   optionEditor: {
     loadingDescription: '설명 로딩 중...',
@@ -304,7 +304,8 @@ export default {
     cdk: 'Mirror짱 CDK',
     cdkPlaceholder: 'CDK 입력 (선택사항)',
     serviceName: 'Mirror짱',
-    cdkHintAfterLink: '는 독립적인 서드파티 고속 다운로드 서비스이며 유료 구독이 필요합니다. 이것은 "{{projectName}}"의 요금이 아닙니다. 운영비는 구독 수익으로 충당되며 일부는 개발자에게 환원됩니다. CDK를 구독하여 고속 다운로드를 즐기세요. CDK가 없으면 GitHub에서 다운로드됩니다. 실패하면 네트워크 프록시를 설정하세요.',
+    cdkHintAfterLink:
+      '는 독립적인 서드파티 고속 다운로드 서비스이며 유료 구독이 필요합니다. 이것은 "{{projectName}}"의 요금이 아닙니다. 운영비는 구독 수익으로 충당되며 일부는 개발자에게 환원됩니다. CDK를 구독하여 고속 다운로드를 즐기세요. CDK가 없으면 GitHub에서 다운로드됩니다. 실패하면 네트워크 프록시를 설정하세요.',
     getCdk: 'CDK가 없으신가요? 지금 구독하세요',
     cdkHint: 'CDK가 올바른지 또는 만료되지 않았는지 확인하세요',
     checkUpdate: '업데이트 확인',
@@ -424,7 +425,7 @@ export default {
     closeOtherTabs: '다른 탭 닫기',
     closeAllTabs: '모든 탭 닫기',
     closeTabsToRight: '오른쪽 탭 닫기',
-    
+
     // 작업 컨텍스트 메뉴
     addTask: '작업 추가',
     duplicateTask: '작업 복제',
@@ -442,7 +443,7 @@ export default {
     deselectAll: '모두 선택 해제',
     expandAllTasks: '모두 펼치기',
     collapseAllTasks: '모두 접기',
-    
+
     // 스크린샷 패널 컨텍스트 메뉴
     reconnect: '다시 연결',
     forceRefresh: '강제 새로고침',
@@ -451,11 +452,11 @@ export default {
     fullscreen: '전체 화면',
     saveScreenshot: '스크린샷 저장',
     copyScreenshot: '스크린샷 복사',
-    
+
     // 연결 패널 컨텍스트 메뉴
     refreshDevices: '기기 목록 새로고침',
     disconnect: '연결 해제',
-    
+
     // 공통
     openFolder: '폴더 열기',
   },

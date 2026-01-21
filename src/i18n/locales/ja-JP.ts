@@ -63,7 +63,8 @@ export default {
       noSavedDevice: '保存されたデバイス設定がありません',
       connectFailed: '自動接続に失敗しました',
       resourceFailed: 'リソースの読み込みに失敗しました',
-      needConfig: 'まずデバイスを接続してリソースを読み込むか、接続パネルでデバイス設定を保存してください',
+      needConfig:
+        'まずデバイスを接続してリソースを読み込むか、接続パネルでデバイス設定を保存してください',
     },
   },
 
@@ -104,7 +105,7 @@ export default {
     no: 'いいえ',
     invalidInput: '入力形式が正しくありません',
   },
-  
+
   // オプションエディタ
   optionEditor: {
     loadingDescription: '説明を読み込み中...',
@@ -133,7 +134,8 @@ export default {
     noDevices: 'デバイスが見つかりません',
     playcoverHint: 'PlayCover アプリのリッスンアドレスを入力',
     lastSelected: '前回の選択 · クリックして検索',
-    savedDeviceNotFound: '前回のデバイスが見つかりません。接続を確認するか、別のデバイスを選択してください',
+    savedDeviceNotFound:
+      '前回のデバイスが見つかりません。接続を確認するか、別のデバイスを選択してください',
   },
 
   // リソース
@@ -304,7 +306,8 @@ export default {
     cdk: 'Mirror醤 CDK',
     cdkPlaceholder: 'CDK を入力（任意）',
     serviceName: 'Mirror醤',
-    cdkHintAfterLink: ' は独立したサードパーティの高速ダウンロードサービスで、有料サブスクリプションが必要です。これは「{{projectName}}」の料金ではありません。運営費はサブスクリプション収入で賄われ、一部は開発者に還元されます。CDK を購読して高速ダウンロードをお楽しみください。CDK を入力しない場合、GitHub からダウンロードします。失敗した場合は、ネットワークプロキシを設定してください。',
+    cdkHintAfterLink:
+      ' は独立したサードパーティの高速ダウンロードサービスで、有料サブスクリプションが必要です。これは「{{projectName}}」の料金ではありません。運営費はサブスクリプション収入で賄われ、一部は開発者に還元されます。CDK を購読して高速ダウンロードをお楽しみください。CDK を入力しない場合、GitHub からダウンロードします。失敗した場合は、ネットワークプロキシを設定してください。',
     getCdk: 'CDKをお持ちでない方はこちら',
     cdkHint: 'CDK が正しいか、または有効期限が切れていないか確認してください',
     checkUpdate: '更新を確認',
@@ -424,7 +427,7 @@ export default {
     closeOtherTabs: '他のタブを閉じる',
     closeAllTabs: 'すべてのタブを閉じる',
     closeTabsToRight: '右側のタブを閉じる',
-    
+
     // タスクのコンテキストメニュー
     addTask: 'タスクを追加',
     duplicateTask: 'タスクを複製',
@@ -442,7 +445,7 @@ export default {
     deselectAll: 'すべて解除',
     expandAllTasks: 'すべて展開',
     collapseAllTasks: 'すべて折りたたむ',
-    
+
     // スクリーンショットパネルのコンテキストメニュー
     reconnect: '再接続',
     forceRefresh: '強制更新',
@@ -451,11 +454,11 @@ export default {
     fullscreen: '全画面表示',
     saveScreenshot: 'スクリーンショットを保存',
     copyScreenshot: 'スクリーンショットをコピー',
-    
+
     // 接続パネルのコンテキストメニュー
     refreshDevices: 'デバイス一覧を更新',
     disconnect: '切断',
-    
+
     // 共通
     openFolder: 'フォルダを開く',
   },

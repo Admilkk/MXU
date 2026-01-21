@@ -24,7 +24,7 @@ let downloadCancelled = false;
 async function moveToOldFolder(filePath: string): Promise<void> {
   try {
     // 检查文件是否存在
-    if (!await exists(filePath)) {
+    if (!(await exists(filePath))) {
       return;
     }
 
@@ -43,7 +43,7 @@ async function moveToOldFolder(filePath: string): Promise<void> {
       for (let i = 1; i <= 999; i++) {
         const bakSuffix = `.bak${i.toString().padStart(3, '0')}`;
         destPath = await join(oldDir, `${fileName}${bakSuffix}`);
-        if (!await exists(destPath)) {
+        if (!(await exists(destPath))) {
           break;
         }
       }
@@ -74,19 +74,19 @@ export async function cancelDownload(): Promise<boolean> {
   if (!isDownloading || !currentDownloadPath) {
     return false;
   }
-  
+
   log.info('取消下载...');
-  
+
   // 标记为用户主动取消，让 downloadUpdate 知道不需要再重置状态
   downloadCancelled = true;
-  
+
   try {
     // 调用 Rust 后端设置取消标志
     await invoke('cancel_download', { savePath: currentDownloadPath });
   } catch (error) {
     log.warn('取消下载失败:', error);
   }
-  
+
   // 立即重置状态，允许新的下载开始
   isDownloading = false;
   currentDownloadPath = null;
@@ -103,17 +103,17 @@ const GITHUB_API_BASE = 'https://api.github.com';
 // 参考: https://github.com/MirrorChyan/docs/blob/main/ErrorCode.md
 export const MIRRORCHYAN_ERROR_CODES = {
   // 业务逻辑错误 (code > 0)
-  INVALID_PARAMS: 1001,           // 参数不正确
-  KEY_EXPIRED: 7001,              // CDK 已过期
-  KEY_INVALID: 7002,              // CDK 错误
+  INVALID_PARAMS: 1001, // 参数不正确
+  KEY_EXPIRED: 7001, // CDK 已过期
+  KEY_INVALID: 7002, // CDK 错误
   RESOURCE_QUOTA_EXHAUSTED: 7003, // CDK 今日下载次数已达上限
-  KEY_MISMATCHED: 7004,           // CDK 类型和待下载的资源不匹配
-  KEY_BLOCKED: 7005,              // CDK 已被封禁
-  RESOURCE_NOT_FOUND: 8001,       // 对应架构和系统下的资源不存在
-  INVALID_OS: 8002,               // 错误的系统参数
-  INVALID_ARCH: 8003,             // 错误的架构参数
-  INVALID_CHANNEL: 8004,          // 错误的更新通道参数
-  UNDIVIDED: 1,                   // 未区分的业务错误
+  KEY_MISMATCHED: 7004, // CDK 类型和待下载的资源不匹配
+  KEY_BLOCKED: 7005, // CDK 已被封禁
+  RESOURCE_NOT_FOUND: 8001, // 对应架构和系统下的资源不存在
+  INVALID_OS: 8002, // 错误的系统参数
+  INVALID_ARCH: 8003, // 错误的架构参数
+  INVALID_CHANNEL: 8004, // 错误的更新通道参数
+  UNDIVIDED: 1, // 未区分的业务错误
 } as const;
 
 // MirrorChyan API 响应类型
@@ -182,7 +182,7 @@ function buildUserAgent(): string {
   const version = typeof __MXU_VERSION__ !== 'undefined' ? __MXU_VERSION__ : 'unknown';
   const os = getOS();
   const arch = getArch();
-  
+
   // 构建平台信息字符串
   let platformInfo = '';
   if (os === 'windows') {
@@ -192,7 +192,7 @@ function buildUserAgent(): string {
   } else if (os === 'linux') {
     platformInfo = 'X11; Linux x86_64';
   }
-  
+
   // 格式: MXU/版本号 (平台信息) Tauri/2.0
   return `MXU/${version} (${platformInfo}; ${arch}) Tauri/2.0`;
 }
@@ -205,11 +205,11 @@ function getArch(): string {
 }
 
 export interface CheckUpdateOptions {
-  resourceId: string;        // mirrorchyan_rid
-  currentVersion: string;    // 当前版本
-  cdk?: string;              // MirrorChyan CDK
-  channel?: UpdateChannel;   // 更新频道
-  userAgent?: string;        // 客户端标识
+  resourceId: string; // mirrorchyan_rid
+  currentVersion: string; // 当前版本
+  cdk?: string; // MirrorChyan CDK
+  channel?: UpdateChannel; // 更新频道
+  userAgent?: string; // 客户端标识
 }
 
 /**
@@ -218,7 +218,7 @@ export interface CheckUpdateOptions {
 async function fetchUpdateFromBase(
   apiBase: string,
   resourceId: string,
-  params: URLSearchParams
+  params: URLSearchParams,
 ): Promise<MirrorChyanApiResponse> {
   const url = `${apiBase}/${resourceId}/latest?${params.toString()}`;
   const response = await tauriFetch(url, {
@@ -239,35 +239,35 @@ export async function checkUpdate(options: CheckUpdateOptions): Promise<UpdateIn
     log.info('正在下载更新，跳过检查更新');
     return null;
   }
-  
+
   const { resourceId, currentVersion, cdk, channel = 'stable', userAgent = 'MXU' } = options;
-  
+
   if (!resourceId) {
     log.warn('未配置 mirrorchyan_rid，跳过更新检查');
     return null;
   }
-  
+
   const params = new URLSearchParams();
   params.set('current_version', currentVersion);
   params.set('user_agent', userAgent);
   params.set('channel', channel);
-  
+
   // 添加系统信息
   const os = getOS();
   const arch = getArch();
   if (os) params.set('os', os);
   if (arch) params.set('arch', arch);
-  
+
   // CDK 是可选的，无 CDK 时也可以检查版本（但无法获取下载链接）
   if (cdk) {
     params.set('cdk', cdk);
   }
-  
+
   log.info(`检查更新: ${resourceId}, 当前版本: ${currentVersion}, 频道: ${channel}`);
-  
+
   let data: MirrorChyanApiResponse | null = null;
   let lastError: unknown = null;
-  
+
   // 依次尝试主站和备用站
   for (let i = 0; i < MIRRORCHYAN_API_BASES.length; i++) {
     const apiBase = MIRRORCHYAN_API_BASES[i];
@@ -286,7 +286,7 @@ export async function checkUpdate(options: CheckUpdateOptions): Promise<UpdateIn
       // 网络错误，继续尝试备用站
     }
   }
-  
+
   // 所有站点都失败
   if (!data || data.code !== 0) {
     if (data && data.code !== 0) {
@@ -315,19 +315,26 @@ export async function checkUpdate(options: CheckUpdateOptions): Promise<UpdateIn
     }
     return null;
   }
-  
+
   if (!data.data) {
     log.warn('更新检查响应缺少 data 字段');
     return null;
   }
-  
-  const { version_name, url: downloadUrl, release_note, update_type, channel: respChannel, filesize } = data.data;
-  
+
+  const {
+    version_name,
+    url: downloadUrl,
+    release_note,
+    update_type,
+    channel: respChannel,
+    filesize,
+  } = data.data;
+
   // 比较版本号判断是否有更新
   const hasUpdate = compareVersions(version_name, currentVersion) > 0;
-  
+
   log.info(`更新检查完成: 最新版本=${version_name}, 有更新=${hasUpdate}`);
-  
+
   return {
     hasUpdate,
     versionName: version_name,
@@ -347,18 +354,22 @@ export async function checkUpdate(options: CheckUpdateOptions): Promise<UpdateIn
 function compareVersions(v1: string, v2: string): number {
   // 移除 v 前缀
   const normalize = (v: string) => v.replace(/^v/i, '');
-  
-  const parts1 = normalize(v1).split('.').map(p => parseInt(p, 10) || 0);
-  const parts2 = normalize(v2).split('.').map(p => parseInt(p, 10) || 0);
-  
+
+  const parts1 = normalize(v1)
+    .split('.')
+    .map((p) => parseInt(p, 10) || 0);
+  const parts2 = normalize(v2)
+    .split('.')
+    .map((p) => parseInt(p, 10) || 0);
+
   const maxLen = Math.max(parts1.length, parts2.length);
-  
+
   for (let i = 0; i < maxLen; i++) {
     const p1 = parts1[i] || 0;
     const p2 = parts2[i] || 0;
     if (p1 !== p2) return p1 - p2;
   }
-  
+
   return 0;
 }
 
@@ -393,32 +404,36 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
 /**
  * 获取 GitHub 最新 Release
  */
-async function getGitHubLatestRelease(owner: string, repo: string, prerelease = false): Promise<GitHubRelease | null> {
+async function getGitHubLatestRelease(
+  owner: string,
+  repo: string,
+  prerelease = false,
+): Promise<GitHubRelease | null> {
   try {
     // 如果需要预发布版本，需要获取所有 releases 然后找最新的
     const url = prerelease
       ? `${GITHUB_API_BASE}/repos/${owner}/${repo}/releases`
       : `${GITHUB_API_BASE}/repos/${owner}/${repo}/releases/latest`;
-    
+
     const response = await tauriFetch(url, {
       headers: {
-        'Accept': 'application/vnd.github.v3+json',
+        Accept: 'application/vnd.github.v3+json',
         'User-Agent': buildUserAgent(),
       },
     });
-    
+
     if (!response.ok) {
       log.warn(`GitHub API 返回错误: ${response.status}`);
       return null;
     }
-    
+
     const data = await response.json();
-    
+
     if (prerelease && Array.isArray(data)) {
       // 找到最新的 release（包括预发布）
       return data[0] || null;
     }
-    
+
     return data as GitHubRelease;
   } catch (error) {
     log.error('获取 GitHub Release 失败:', error);
@@ -433,46 +448,42 @@ async function getGitHubLatestRelease(owner: string, repo: string, prerelease = 
 function matchGitHubAsset(assets: GitHubAsset[]): GitHubAsset | null {
   const osAliases = getOSAliases();
   const archAliases = getArchAliases();
-  
+
   // 先找出所有匹配 OS + 架构的 assets
   const candidates: GitHubAsset[] = [];
-  
+
   for (const asset of assets) {
     const name = asset.name.toLowerCase();
-    
+
     // 检查 OS 匹配
-    const osMatch = osAliases.some(alias => name.includes(alias.toLowerCase()));
+    const osMatch = osAliases.some((alias) => name.includes(alias.toLowerCase()));
     if (!osMatch) continue;
-    
+
     // 检查架构匹配
-    const archMatch = archAliases.some(alias => name.includes(alias.toLowerCase()));
+    const archMatch = archAliases.some((alias) => name.includes(alias.toLowerCase()));
     if (!archMatch) continue;
-    
+
     candidates.push(asset);
   }
-  
+
   if (candidates.length === 0) {
     return null;
   }
-  
+
   // 如果只有一个匹配，直接返回
   if (candidates.length === 1) {
     return candidates[0];
   }
-  
+
   // 多个匹配时，优先选择名字带 "mxu" 的
-  const mxuCandidate = candidates.find(asset => 
-    asset.name.toLowerCase().includes('-mxu')
-  );
+  const mxuCandidate = candidates.find((asset) => asset.name.toLowerCase().includes('-mxu'));
   if (mxuCandidate) {
     log.info(`多个匹配，选择带 mxu 的文件: ${mxuCandidate.name}`);
     return mxuCandidate;
   }
-  
+
   // 没有 mxu 的，选择体积最大的
-  const largest = candidates.reduce((max, asset) => 
-    asset.size > max.size ? asset : max
-  );
+  const largest = candidates.reduce((max, asset) => (asset.size > max.size ? asset : max));
   log.info(`多个匹配，选择体积最大的文件: ${largest.name} (${largest.size} bytes)`);
   return largest;
 }
@@ -486,32 +497,34 @@ export interface GetGitHubDownloadUrlOptions {
  * 获取 GitHub 下载链接
  * @returns 下载链接和文件大小，或 null（失败时）
  */
-export async function getGitHubDownloadUrl(options: GetGitHubDownloadUrlOptions): Promise<{ url: string; size: number; filename: string } | null> {
+export async function getGitHubDownloadUrl(
+  options: GetGitHubDownloadUrlOptions,
+): Promise<{ url: string; size: number; filename: string } | null> {
   const { githubUrl, channel = 'stable' } = options;
-  
+
   const parsed = parseGitHubUrl(githubUrl);
   if (!parsed) {
     log.warn('无法解析 GitHub URL:', githubUrl);
     return null;
   }
-  
+
   const { owner, repo } = parsed;
   const prerelease = channel !== 'stable';
-  
+
   const release = await getGitHubLatestRelease(owner, repo, prerelease);
   if (!release) {
     log.warn('未找到 GitHub Release');
     return null;
   }
-  
+
   const asset = matchGitHubAsset(release.assets);
   if (!asset) {
     log.warn('未找到匹配当前系统的下载文件');
     return null;
   }
-  
+
   log.info(`匹配到 GitHub 下载文件: ${asset.name}`);
-  
+
   return {
     url: asset.browser_download_url,
     size: asset.size,
@@ -536,12 +549,12 @@ interface DownloadProgressEventPayload extends DownloadProgress {
 
 /**
  * 下载更新包（使用 Rust 后端流式下载）
- * 
+ *
  * 相比 JavaScript 下载，Rust 后端实现具有以下优势：
  * - 流式写入磁盘，不占用大量内存
  * - 更高的下载速度（直接写入文件，无需 JS 中转）
  * - 更稳定的大文件下载支持
- * 
+ *
  * @returns 是否下载成功
  */
 export async function downloadUpdate(options: DownloadUpdateOptions): Promise<boolean> {
@@ -550,21 +563,21 @@ export async function downloadUpdate(options: DownloadUpdateOptions): Promise<bo
     log.info('已有下载任务进行中，跳过本次下载请求');
     return false;
   }
-  
+
   const { url, savePath, totalSize, onProgress } = options;
-  
+
   log.info(`开始下载更新: ${url}`);
   log.info(`保存路径: ${savePath}`);
-  
+
   isDownloading = true;
   downloadCancelled = false;
   currentDownloadPath = savePath;
-  
+
   // 设置进度监听器
   let unlisten: (() => void) | null = null;
   // 当前下载的 session ID，用于过滤旧下载的进度事件
   let currentSessionId: number | null = null;
-  
+
   try {
     // 先启动下载，获取 session_id
     const downloadPromise = invoke<number>('download_file', {
@@ -572,7 +585,7 @@ export async function downloadUpdate(options: DownloadUpdateOptions): Promise<bo
       savePath,
       totalSize: totalSize || null,
     });
-    
+
     // 监听 Rust 后端发送的下载进度事件
     if (onProgress) {
       const { listen } = await import('@tauri-apps/api/event');
@@ -595,11 +608,11 @@ export async function downloadUpdate(options: DownloadUpdateOptions): Promise<bo
         });
       });
     }
-    
+
     // 等待下载完成，返回的是 session_id
     const sessionId = await downloadPromise;
     currentSessionId = sessionId;
-    
+
     log.info(`下载完成 (session ${sessionId})`);
     return true;
   } catch (error) {
@@ -632,33 +645,35 @@ export interface CheckAndDownloadOptions extends CheckUpdateOptions {
  * 检查更新并获取下载信息
  * 始终使用 Mirror酱 检查更新，根据是否有 CDK 决定下载来源
  */
-export async function checkAndPrepareDownload(options: CheckAndDownloadOptions): Promise<UpdateInfo | null> {
+export async function checkAndPrepareDownload(
+  options: CheckAndDownloadOptions,
+): Promise<UpdateInfo | null> {
   // 正在下载时不允许检查更新
   if (isDownloading) {
     log.info('正在下载更新，跳过检查更新');
     return null;
   }
-  
+
   const { githubUrl, basePath, cdk, channel, ...checkOptions } = options;
-  
+
   // 始终使用 Mirror酱 检查更新
   const updateInfo = await checkUpdate({ ...checkOptions, cdk, channel });
-  
+
   if (!updateInfo || !updateInfo.hasUpdate) {
     return updateInfo;
   }
-  
+
   // 如果有 CDK 且返回了下载链接，直接使用
   if (cdk && updateInfo.downloadUrl) {
     log.info('使用 Mirror酱 下载链接');
     return updateInfo;
   }
-  
+
   // 没有 CDK 或没有下载链接，尝试使用 GitHub
   if (githubUrl) {
     log.info('无 CDK 或无下载链接，尝试使用 GitHub 下载');
     const githubDownload = await getGitHubDownloadUrl({ githubUrl, channel });
-    
+
     if (githubDownload) {
       return {
         ...updateInfo,
@@ -668,10 +683,10 @@ export async function checkAndPrepareDownload(options: CheckAndDownloadOptions):
         downloadSource: 'github',
       };
     }
-    
+
     log.warn('GitHub 下载链接获取失败');
   }
-  
+
   // 既没有 Mirror酱 链接也没有 GitHub 链接
   return updateInfo;
 }
@@ -698,8 +713,8 @@ interface ChangesJson {
 }
 
 export interface InstallUpdateOptions {
-  zipPath: string;      // 下载的更新包路径
-  targetDir: string;    // 目标安装目录
+  zipPath: string; // 下载的更新包路径
+  targetDir: string; // 目标安装目录
   onProgress?: (stage: string, detail?: string) => void;
 }
 
@@ -713,35 +728,37 @@ export interface InstallUpdateOptions {
  */
 export async function installUpdate(options: InstallUpdateOptions): Promise<boolean> {
   const { zipPath, targetDir, onProgress } = options;
-  
+
   log.info(`开始安装更新: ${zipPath} -> ${targetDir}`);
-  
+
   // 生成临时解压目录
   const extractDir = await join(await dirname(zipPath), 'update_extract');
-  
+
   try {
     // 1. 解压更新包
     onProgress?.('extracting', zipPath);
     log.info(`解压更新包到: ${extractDir}`);
-    
+
     await invoke('extract_zip', {
       zipPath,
       destDir: extractDir,
     });
-    
+
     // 2. 检查是否为增量包
     onProgress?.('checking', 'changes.json');
     log.info('检查更新包类型...');
-    
+
     const changesJson = await invoke<ChangesJson | null>('check_changes_json', {
       extractDir,
     });
-    
+
     if (changesJson) {
       // 增量更新
-      log.info(`增量更新: deleted=${changesJson.deleted.length}, added=${changesJson.added.length}, modified=${changesJson.modified.length}`);
+      log.info(
+        `增量更新: deleted=${changesJson.deleted.length}, added=${changesJson.added.length}, modified=${changesJson.modified.length}`,
+      );
       onProgress?.('applying', 'incremental');
-      
+
       await invoke('apply_incremental_update', {
         extractDir,
         targetDir,
@@ -751,32 +768,32 @@ export async function installUpdate(options: InstallUpdateOptions): Promise<bool
       // 全量更新
       log.info('全量更新');
       onProgress?.('applying', 'full');
-      
+
       await invoke('apply_full_update', {
         extractDir,
         targetDir,
       });
     }
-    
+
     // 3. 清理临时文件
     onProgress?.('cleanup');
     log.info('清理临时文件...');
-    
+
     await invoke('cleanup_extract_dir', { extractDir });
-    
+
     // 将下载的 zip 文件移动到 old 文件夹
     await moveToOldFolder(zipPath);
-    
+
     log.info('更新安装完成');
     onProgress?.('done');
-    
+
     return true;
   } catch (error) {
     log.error('更新安装失败:', error);
-    
+
     // 尝试清理临时目录
     await invoke('cleanup_extract_dir', { extractDir }).catch(() => {});
-    
+
     throw error;
   }
 }
@@ -830,10 +847,10 @@ export function consumeUpdateCompleteInfo(): UpdateCompleteInfo | null {
   try {
     const data = localStorage.getItem(UPDATE_COMPLETE_STORAGE_KEY);
     if (!data) return null;
-    
+
     // 读取后立即清除
     localStorage.removeItem(UPDATE_COMPLETE_STORAGE_KEY);
-    
+
     const info = JSON.parse(data) as UpdateCompleteInfo;
     log.info('已读取更新完成信息:', info.newVersion);
     return info;
@@ -863,7 +880,7 @@ export function getPendingUpdateInfo(): PendingUpdateInfo | null {
   try {
     const data = localStorage.getItem(PENDING_UPDATE_STORAGE_KEY);
     if (!data) return null;
-    
+
     const info = JSON.parse(data) as PendingUpdateInfo;
     log.info('检测到待安装更新:', info.versionName);
     return info;

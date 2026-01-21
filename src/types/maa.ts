@@ -5,8 +5,8 @@ export interface AdbDevice {
   name: string;
   adb_path: string;
   address: string;
-  screencap_methods: string;  // u64 作为字符串传递，避免 JS 精度丢失
-  input_methods: string;       // u64 作为字符串传递
+  screencap_methods: string; // u64 作为字符串传递，避免 JS 精度丢失
+  input_methods: string; // u64 作为字符串传递
   config: string;
 }
 
@@ -22,8 +22,8 @@ export interface AdbControllerConfig {
   type: 'Adb';
   adb_path: string;
   address: string;
-  screencap_methods: string;  // u64 作为字符串传递
-  input_methods: string;       // u64 作为字符串传递
+  screencap_methods: string; // u64 作为字符串传递
+  input_methods: string; // u64 作为字符串传递
   config: string;
 }
 
@@ -49,18 +49,14 @@ export interface GamepadControllerConfig {
 }
 
 /** 控制器配置 */
-export type ControllerConfig = 
-  | AdbControllerConfig 
-  | Win32ControllerConfig 
+export type ControllerConfig =
+  | AdbControllerConfig
+  | Win32ControllerConfig
   | PlayCoverControllerConfig
   | GamepadControllerConfig;
 
 /** 连接状态 */
-export type ConnectionStatus = 
-  | 'Disconnected'
-  | 'Connecting'
-  | 'Connected'
-  | { Failed: string };
+export type ConnectionStatus = 'Disconnected' | 'Connecting' | 'Connected' | { Failed: string };
 
 /** 任务状态 */
 export type TaskStatus = 'Pending' | 'Running' | 'Succeeded' | 'Failed';
@@ -107,23 +103,23 @@ export const Win32InputMethod = {
 
 /** Win32 截图方法名称映射 */
 export const Win32ScreencapMethodNames: Record<string, bigint> = {
-  'GDI': Win32ScreencapMethod.GDI,
-  'FramePool': Win32ScreencapMethod.FramePool,
-  'DXGI_DesktopDup': Win32ScreencapMethod.DXGI_DesktopDup,
-  'DXGI_DesktopDup_Window': Win32ScreencapMethod.DXGI_DesktopDup_Window,
-  'PrintWindow': Win32ScreencapMethod.PrintWindow,
-  'ScreenDC': Win32ScreencapMethod.ScreenDC,
+  GDI: Win32ScreencapMethod.GDI,
+  FramePool: Win32ScreencapMethod.FramePool,
+  DXGI_DesktopDup: Win32ScreencapMethod.DXGI_DesktopDup,
+  DXGI_DesktopDup_Window: Win32ScreencapMethod.DXGI_DesktopDup_Window,
+  PrintWindow: Win32ScreencapMethod.PrintWindow,
+  ScreenDC: Win32ScreencapMethod.ScreenDC,
 };
 
 /** Win32 输入方法名称映射 */
 export const Win32InputMethodNames: Record<string, bigint> = {
-  'Seize': Win32InputMethod.Seize,
-  'SendMessage': Win32InputMethod.SendMessage,
-  'PostMessage': Win32InputMethod.PostMessage,
-  'LegacyEvent': Win32InputMethod.LegacyEvent,
-  'PostThreadMessage': Win32InputMethod.PostThreadMessage,
-  'SendMessageWithCursorPos': Win32InputMethod.SendMessageWithCursorPos,
-  'PostMessageWithCursorPos': Win32InputMethod.PostMessageWithCursorPos,
+  Seize: Win32InputMethod.Seize,
+  SendMessage: Win32InputMethod.SendMessage,
+  PostMessage: Win32InputMethod.PostMessage,
+  LegacyEvent: Win32InputMethod.LegacyEvent,
+  PostThreadMessage: Win32InputMethod.PostThreadMessage,
+  SendMessageWithCursorPos: Win32InputMethod.SendMessageWithCursorPos,
+  PostMessageWithCursorPos: Win32InputMethod.PostMessageWithCursorPos,
 };
 
 /** 解析 Win32 截图方法名称 */

@@ -32,25 +32,25 @@ import { getInterfaceLangKey } from '@/i18n';
 import clsx from 'clsx';
 
 /** 选项预览标签组件 */
-function OptionPreviewTag({ 
-  label, 
-  value, 
-  type 
-}: { 
-  label: string; 
-  value: string; 
+function OptionPreviewTag({
+  label,
+  value,
+  type,
+}: {
+  label: string;
+  value: string;
   type: 'select' | 'switch' | 'input';
 }) {
   // 截断过长的显示值
-  const truncateText = (text: string, max: number) => 
+  const truncateText = (text: string, max: number) =>
     text.length > max ? text.slice(0, max) + '…' : text;
-  
+
   return (
-    <span 
+    <span
       className={clsx(
         'inline-flex items-center gap-1 px-1.5 py-0.5 text-xs rounded',
         'text-text-tertiary',
-        'max-w-[140px]'
+        'max-w-[140px]',
       )}
       title={`${label}: ${value}`}
     >
@@ -58,10 +58,12 @@ function OptionPreviewTag({
         // Switch 类型：显示选项名 + 状态圆点
         <>
           <span className="truncate">{truncateText(label, 6)}</span>
-          <span className={clsx(
-            'w-1.5 h-1.5 rounded-full flex-shrink-0',
-            value === 'ON' ? 'bg-success/70' : 'bg-text-muted/50'
-          )} />
+          <span
+            className={clsx(
+              'w-1.5 h-1.5 rounded-full flex-shrink-0',
+              value === 'ON' ? 'bg-success/70' : 'bg-text-muted/50',
+            )}
+          />
         </>
       ) : (
         // Select/Input 类型：显示选项名: 值
@@ -81,21 +83,21 @@ interface TaskItemProps {
 }
 
 /** 描述内容组件：显示从文件/URL/直接文本解析的内容 */
-function DescriptionContent({ 
-  html, 
-  loading, 
-  type, 
-  loaded, 
-  error 
-}: { 
-  html: string; 
-  loading: boolean; 
+function DescriptionContent({
+  html,
+  loading,
+  type,
+  loaded,
+  error,
+}: {
+  html: string;
+  loading: boolean;
   type: 'url' | 'file' | 'text';
   loaded: boolean;
   error?: string;
 }) {
   const { t } = useTranslation();
-  
+
   if (loading) {
     return (
       <div className="flex items-center gap-1.5 text-xs text-text-muted">
@@ -104,17 +106,13 @@ function DescriptionContent({
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-1">
       {/* 来源提示 */}
       {loaded && type !== 'text' && (
         <div className="flex items-center gap-1 text-[10px] text-text-muted">
-          {type === 'file' ? (
-            <FileText className="w-3 h-3" />
-          ) : (
-            <Link className="w-3 h-3" />
-          )}
+          {type === 'file' ? <FileText className="w-3 h-3" /> : <Link className="w-3 h-3" />}
           <span>{t(type === 'file' ? 'taskItem.loadedFromFile' : 'taskItem.loadedFromUrl')}</span>
         </div>
       )}
@@ -122,12 +120,14 @@ function DescriptionContent({
       {error && type !== 'text' && (
         <div className="flex items-center gap-1 text-[10px] text-warning">
           <AlertCircle className="w-3 h-3" />
-          <span>{t('taskItem.loadDescriptionFailed')}: {error}</span>
+          <span>
+            {t('taskItem.loadDescriptionFailed')}: {error}
+          </span>
         </div>
       )}
       {/* 内容 */}
       {html && (
-        <div 
+        <div
           className="text-xs text-text-muted [&_p]:my-0.5 [&_a]:text-accent [&_a]:hover:underline"
           dangerouslySetInnerHTML={{ __html: html }}
         />
@@ -140,7 +140,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
-  
+
   const {
     projectInterface,
     toggleTaskEnabled,
@@ -162,94 +162,96 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
     basePath,
     interfaceTranslations,
   } = useAppStore();
-  
+
   // 获取任务运行状态
   const taskRunStatus: TaskRunStatus = instanceTaskRunStatus[instanceId]?.[task.id] || 'idle';
-  
+
   // 获取实例运行状态
-  const instance = instances.find(i => i.id === instanceId);
+  const instance = instances.find((i) => i.id === instanceId);
   const isInstanceRunning = instance?.isRunning || false;
-  
+
   // 判断是否可以编辑选项（只有 pending 或 idle 状态的任务可以编辑）
   const canEditOptions = taskRunStatus === 'idle' || taskRunStatus === 'pending';
-  
+
   // 判断是否可以调整顺序/删除（实例运行时禁用）
   const canReorder = !isInstanceRunning;
   const canDelete = !isInstanceRunning;
-  
+
   // 用于追踪选项值变化的 ref（避免首次渲染时触发）
   const prevOptionValuesRef = useRef<string | null>(null);
-  
+
   // 当选项值变化且任务状态为 pending 时，调用 overridePipeline 更新任务配置
   useEffect(() => {
     const currentOptionValues = JSON.stringify(task.optionValues);
-    
+
     // 首次渲染时只记录当前值，不触发 override
     if (prevOptionValuesRef.current === null) {
       prevOptionValuesRef.current = currentOptionValues;
       return;
     }
-    
+
     // 如果选项值没有变化，不处理
     if (prevOptionValuesRef.current === currentOptionValues) {
       return;
     }
-    
+
     // 更新 ref
     prevOptionValuesRef.current = currentOptionValues;
-    
+
     // 只有 pending 状态的任务才需要调用 overridePipeline
     if (taskRunStatus !== 'pending') {
       return;
     }
-    
+
     // 获取对应的 maaTaskId
     const maaTaskId = findMaaTaskIdBySelectedTaskId(instanceId, task.id);
     if (maaTaskId === null) {
       return;
     }
-    
+
     // 生成新的 pipeline override 并调用后端
     const pipelineOverride = generateTaskPipelineOverride(task, projectInterface);
-    maaService.overridePipeline(instanceId, maaTaskId, pipelineOverride).catch(err => {
+    maaService.overridePipeline(instanceId, maaTaskId, pipelineOverride).catch((err) => {
       console.error('Failed to override pipeline:', err);
     });
-  }, [task.optionValues, taskRunStatus, instanceId, task.id, task, projectInterface, findMaaTaskIdBySelectedTaskId]);
+  }, [
+    task.optionValues,
+    taskRunStatus,
+    instanceId,
+    task.id,
+    task,
+    projectInterface,
+    findMaaTaskIdBySelectedTaskId,
+  ]);
 
   const { state: menuState, show: showMenu, hide: hideMenu } = useContextMenu();
-  
-  const taskDef = projectInterface?.task.find(t => t.name === task.taskName);
+
+  const taskDef = projectInterface?.task.find((t) => t.name === task.taskName);
   const langKey = getInterfaceLangKey(language);
-  
+
   // 获取翻译表
   const translations = interfaceTranslations[langKey];
-  
+
   // 使用新的 Hook 解析任务描述（支持文件/URL/直接文本）
   const resolvedDescription = useResolvedContent(
     taskDef?.description ? resolveI18nText(taskDef.description, langKey) : undefined,
     basePath,
-    translations
+    translations,
   );
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id, disabled: !canReorder });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    disabled: !canReorder,
+  });
 
   // 禁止 X 方向位移，仅允许垂直拖动
-  const constrainedTransform = transform
-    ? { ...transform, x: 0 }
-    : null;
+  const constrainedTransform = transform ? { ...transform, x: 0 } : null;
 
   const style = {
     transform: CSS.Transform.toString(constrainedTransform),
     transition,
   };
-  
+
   if (!taskDef) return null;
 
   const originalLabel = resolveI18nText(taskDef.label, langKey) || taskDef.name;
@@ -259,19 +261,24 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
   // 生成选项预览信息（最多显示3个）
   const optionPreviews = useMemo(() => {
     if (!hasOptions || !projectInterface?.option) return [];
-    
-    const previews: { key: string; label: string; value: string; type: 'select' | 'switch' | 'input' }[] = [];
+
+    const previews: {
+      key: string;
+      label: string;
+      value: string;
+      type: 'select' | 'switch' | 'input';
+    }[] = [];
     const maxPreviews = 3;
-    
+
     for (const optionKey of taskDef.option || []) {
       if (previews.length >= maxPreviews) break;
-      
+
       const optionDef = projectInterface.option[optionKey];
       if (!optionDef) continue;
-      
+
       const optionLabel = resolveI18nText(optionDef.label, langKey) || optionKey;
       const optionValue = task.optionValues[optionKey];
-      
+
       if (optionDef.type === 'switch') {
         const isOn = optionValue?.type === 'switch' ? optionValue.value : false;
         previews.push({
@@ -297,12 +304,13 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
         }
       } else {
         // select 类型（默认）
-        const caseName = optionValue?.type === 'select' 
-          ? optionValue.caseName 
-          : optionDef.default_case || optionDef.cases?.[0]?.name || '';
-        const selectedCase = optionDef.cases?.find(c => c.name === caseName);
-        const caseLabel = selectedCase 
-          ? (resolveI18nText(selectedCase.label, langKey) || selectedCase.name)
+        const caseName =
+          optionValue?.type === 'select'
+            ? optionValue.caseName
+            : optionDef.default_case || optionDef.cases?.[0]?.name || '';
+        const selectedCase = optionDef.cases?.find((c) => c.name === caseName);
+        const caseLabel = selectedCase
+          ? resolveI18nText(selectedCase.label, langKey) || selectedCase.name
           : caseName;
         previews.push({
           key: optionKey,
@@ -312,9 +320,16 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
         });
       }
     }
-    
+
     return previews;
-  }, [hasOptions, projectInterface?.option, taskDef.option, task.optionValues, langKey, resolveI18nText]);
+  }, [
+    hasOptions,
+    projectInterface?.option,
+    taskDef.option,
+    task.optionValues,
+    langKey,
+    resolveI18nText,
+  ]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -374,9 +389,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
         { id: 'divider-1', label: '', divider: true },
         {
           id: 'toggle',
-          label: task.enabled
-            ? t('contextMenu.disableTask')
-            : t('contextMenu.enableTask'),
+          label: task.enabled ? t('contextMenu.disableTask') : t('contextMenu.enableTask'),
           icon: task.enabled ? ToggleLeft : ToggleRight,
           disabled: isInstanceRunning,
           onClick: () => toggleTaskEnabled(instanceId, task.id),
@@ -453,7 +466,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
       isInstanceRunning,
       canReorder,
       canDelete,
-    ]
+    ],
   );
 
   // 状态指示器颜色
@@ -480,7 +493,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
       className={clsx(
         'group bg-bg-secondary rounded-lg border border-border overflow-hidden transition-shadow relative',
         isDragging && 'shadow-lg opacity-50',
-        taskRunStatus === 'running' && 'task-item-running'
+        taskRunStatus === 'running' && 'task-item-running',
       )}
     >
       {/* 任务状态指示器（左侧竖条） */}
@@ -488,12 +501,12 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
         <div
           className={clsx(
             'absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-colors',
-            getStatusIndicatorClass()
+            getStatusIndicatorClass(),
           )}
           title={t(`taskItem.status.${taskRunStatus}`)}
         />
       )}
-      
+
       {/* 任务头部 */}
       <div className="flex items-center gap-2 p-3">
         {/* 拖拽手柄 */}
@@ -502,19 +515,21 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
           {...(canReorder ? listeners : {})}
           className={clsx(
             'p-1 rounded',
-            canReorder 
-              ? 'cursor-grab active:cursor-grabbing hover:bg-bg-hover' 
-              : 'cursor-not-allowed opacity-30'
+            canReorder
+              ? 'cursor-grab active:cursor-grabbing hover:bg-bg-hover'
+              : 'cursor-not-allowed opacity-30',
           )}
         >
           <GripVertical className="w-4 h-4 text-text-muted" />
         </div>
 
         {/* 启用复选框 - 运行时禁用 */}
-        <label className={clsx(
-          'flex items-center',
-          isInstanceRunning ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-        )}>
+        <label
+          className={clsx(
+            'flex items-center',
+            isInstanceRunning ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+          )}
+        >
           <input
             type="checkbox"
             checked={task.enabled}
@@ -539,7 +554,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
                 className={clsx(
                   'flex-1 px-2 py-1 text-sm rounded border border-accent',
                   'bg-bg-primary text-text-primary',
-                  'focus:outline-none focus:ring-1 focus:ring-accent/20'
+                  'focus:outline-none focus:ring-1 focus:ring-accent/20',
                 )}
               />
               <button
@@ -566,7 +581,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
           ) : (
             <>
               {/* 任务名称 */}
-              <div 
+              <div
                 className="flex items-center gap-1 min-w-0 cursor-pointer flex-shrink-0"
                 onDoubleClick={handleDoubleClick}
                 title={t('taskItem.rename')}
@@ -574,15 +589,13 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
                 <span
                   className={clsx(
                     'text-sm font-medium truncate',
-                    task.enabled ? 'text-text-primary' : 'text-text-muted'
+                    task.enabled ? 'text-text-primary' : 'text-text-muted',
                   )}
                 >
                   {displayName}
                 </span>
                 {task.customName && (
-                  <span className="flex-shrink-0 text-xs text-text-muted">
-                    ({originalLabel})
-                  </span>
+                  <span className="flex-shrink-0 text-xs text-text-muted">({originalLabel})</span>
                 )}
               </div>
 
@@ -626,7 +639,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
             onClick={() => removeTaskFromInstance(instanceId, task.id)}
             className={clsx(
               'p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity',
-              'hover:bg-bg-active'
+              'hover:bg-bg-active',
             )}
             title={t('taskItem.remove')}
           >
@@ -667,11 +680,7 @@ export function TaskItem({ instanceId, task }: TaskItemProps) {
 
       {/* 右键菜单 */}
       {menuState.isOpen && (
-        <ContextMenu
-          items={menuState.items}
-          position={menuState.position}
-          onClose={hideMenu}
-        />
+        <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
       )}
     </div>
   );

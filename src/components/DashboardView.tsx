@@ -36,12 +36,7 @@ interface InstanceCardProps {
   onSelect: () => void;
 }
 
-function InstanceCard({
-  instanceId,
-  instanceName,
-  isActive,
-  onSelect,
-}: InstanceCardProps) {
+function InstanceCard({ instanceId, instanceName, isActive, onSelect }: InstanceCardProps) {
   const { t } = useTranslation();
   const {
     instances,
@@ -74,7 +69,7 @@ function InstanceCard({
     registerEntryTaskName,
     screenshotFrameRate,
   } = useAppStore();
-  
+
   const langKey = getInterfaceLangKey(language);
   const translations = interfaceTranslations[langKey];
 
@@ -88,7 +83,7 @@ function InstanceCard({
   const lastFrameTimeRef = useRef(0);
   const frameIntervalRef = useRef(getFrameInterval(screenshotFrameRate));
   const runningInstanceIdRef = useRef<string | null>(null);
-  
+
   // 帧率配置变化时更新帧间隔
   useEffect(() => {
     frameIntervalRef.current = getFrameInterval(screenshotFrameRate);
@@ -99,23 +94,23 @@ function InstanceCard({
   const isStreaming = instanceScreenshotStreaming[instanceId] ?? false;
   const isConnected = connectionStatus === 'Connected';
   const isResourceLoaded = instanceResourceLoaded[instanceId] || false;
-  
+
   // 获取当前实例
-  const instance = instances.find(i => i.id === instanceId);
+  const instance = instances.find((i) => i.id === instanceId);
   const isRunning = instance?.isRunning || false;
   const tasks = instance?.selectedTasks || [];
-  const enabledTasks = tasks.filter(t => t.enabled);
+  const enabledTasks = tasks.filter((t) => t.enabled);
   const canRun = isConnected && isResourceLoaded && enabledTasks.length > 0;
-  
+
   // 获取连接状态信息
   const getStatusInfo = useCallback(() => {
     const controllers = projectInterface?.controller || [];
     const resources = projectInterface?.resource || [];
     const currentControllerName = selectedController[instanceId] || controllers[0]?.name;
     const currentResourceName = selectedResource[instanceId] || resources[0]?.name;
-    const currentController = controllers.find(c => c.name === currentControllerName);
-    const currentResource = resources.find(r => r.name === currentResourceName);
-    
+    const currentController = controllers.find((c) => c.name === currentControllerName);
+    const currentResource = resources.find((r) => r.name === currentResourceName);
+
     // 获取设备名称
     const savedDevice = instance?.savedDevice;
     let deviceName = '';
@@ -126,172 +121,203 @@ function InstanceCard({
     } else if (savedDevice?.playcoverAddress) {
       deviceName = savedDevice.playcoverAddress;
     }
-    
-    const controllerLabel = currentController 
+
+    const controllerLabel = currentController
       ? resolveI18nText(currentController.label, translations) || currentController.name
       : '';
     const resourceLabel = currentResource
       ? resolveI18nText(currentResource.label, translations) || currentResource.name
       : '';
-    
+
     return { controllerLabel, resourceLabel, deviceName };
   }, [projectInterface, selectedController, selectedResource, instance, instanceId, translations]);
-  
+
   const statusInfo = getStatusInfo();
-  
+
   // 获取当前正在运行的任务名称
   const getRunningTaskName = useCallback(() => {
     if (!instance?.isRunning) return null;
-    
+
     const taskRunStatus = instanceTaskRunStatus[instanceId];
     if (!taskRunStatus) return null;
-    
+
     // 找到状态为 running 的任务
     const runningTaskId = Object.entries(taskRunStatus).find(
-      ([, status]) => status === 'running'
+      ([, status]) => status === 'running',
     )?.[0];
-    
+
     if (!runningTaskId) return null;
-    
+
     // 找到对应的 selectedTask
-    const selectedTask = instance.selectedTasks.find(t => t.id === runningTaskId);
+    const selectedTask = instance.selectedTasks.find((t) => t.id === runningTaskId);
     if (!selectedTask) return null;
-    
+
     // 如果有自定义名称，使用自定义名称
     if (selectedTask.customName) return selectedTask.customName;
-    
+
     // 否则从 projectInterface 获取任务的显示名称
-    const taskDef = projectInterface?.task.find(t => t.name === selectedTask.taskName);
+    const taskDef = projectInterface?.task.find((t) => t.name === selectedTask.taskName);
     if (taskDef) {
       return storeResolveI18nText(taskDef.label, langKey) || taskDef.name;
     }
-    
+
     return selectedTask.taskName;
-  }, [instance, instanceId, instanceTaskRunStatus, projectInterface, storeResolveI18nText, langKey]);
-  
+  }, [
+    instance,
+    instanceId,
+    instanceTaskRunStatus,
+    projectInterface,
+    storeResolveI18nText,
+    langKey,
+  ]);
+
   const runningTaskName = getRunningTaskName();
 
   // 启动/停止任务
-  const handleStartStop = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (!instance || !canRun && !isRunning) return;
-    
-    if (isRunning) {
-      // 停止任务
-      try {
-        log.info(`[${instanceName}] 停止任务...`);
-        setIsStopping(true);
-        await maaService.stopTask(instanceId);
-        if (projectInterface?.agent) {
-          await maaService.stopAgent(instanceId);
-        }
-        updateInstance(instanceId, { isRunning: false });
-        setInstanceTaskStatus(instanceId, null);
-        setInstanceCurrentTaskId(instanceId, null);
-        clearTaskRunStatus(instanceId);
-        clearPendingTasks(instanceId);
-        runningInstanceIdRef.current = null;
-      } catch (err) {
-        log.error(`[${instanceName}] 停止任务失败:`, err);
-      } finally {
-        setIsStopping(false);
-      }
-    } else {
-      // 启动任务
-      if (!canRun) return;
-      
-      setIsStarting(true);
-      
-      try {
-        log.info(`[${instanceName}] 开始执行任务, 数量:`, enabledTasks.length);
-        
-        // 构建任务配置列表
-        const taskConfigs: TaskConfig[] = [];
-        for (const selectedTask of enabledTasks) {
-          const taskDef = projectInterface?.task.find(t => t.name === selectedTask.taskName);
-          if (!taskDef) continue;
-          
-          taskConfigs.push({
-            entry: taskDef.entry,
-            pipeline_override: generateTaskPipelineOverride(selectedTask, projectInterface),
-          });
-          const taskDisplayName = selectedTask.customName || selectedTask.taskName;
-          registerEntryTaskName(taskDef.entry, taskDisplayName);
-        }
-        
-        if (taskConfigs.length === 0) {
-          log.warn(`[${instanceName}] 没有可执行的任务`);
-          setIsStarting(false);
-          return;
-        }
-        
-        // 准备 Agent 配置
-        let agentConfig: AgentConfig | undefined;
-        if (projectInterface?.agent) {
-          agentConfig = {
-            child_exec: projectInterface.agent.child_exec,
-            child_args: projectInterface.agent.child_args,
-            identifier: projectInterface.agent.identifier,
-            timeout: projectInterface.agent.timeout,
-          };
-        }
-        
-        updateInstance(instanceId, { isRunning: true });
-        setInstanceTaskStatus(instanceId, 'Running');
-        
-        // 启动任务
-        const taskIds = await maaService.startTasks(instanceId, taskConfigs, agentConfig, basePath);
-        
-        log.info(`[${instanceName}] 任务已提交, task_ids:`, taskIds);
-        
-        // 初始化任务运行状态
-        const enabledTaskIds = enabledTasks.map(t => t.id);
-        setAllTasksRunStatus(instanceId, enabledTaskIds, 'pending');
-        
-        // 记录映射关系
-        taskIds.forEach((maaTaskId, index) => {
-          if (enabledTasks[index]) {
-            registerMaaTaskMapping(instanceId, maaTaskId, enabledTasks[index].id);
-            const taskDisplayName = enabledTasks[index].customName || enabledTasks[index].taskName;
-            registerTaskIdName(maaTaskId, taskDisplayName);
-          }
-        });
-        
-        // 第一个任务设为 running
-        if (enabledTasks.length > 0) {
-          setTaskRunStatus(instanceId, enabledTasks[0].id, 'running');
-        }
-        
-        // 设置任务队列
-        runningInstanceIdRef.current = instanceId;
-        setPendingTaskIds(instanceId, taskIds);
-        setCurrentTaskIndex(instanceId, 0);
-        setInstanceCurrentTaskId(instanceId, taskIds[0]);
-        setIsStarting(false);
-      } catch (err) {
-        log.error(`[${instanceName}] 任务启动异常:`, err);
-        if (projectInterface?.agent) {
-          try {
+  const handleStartStop = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+
+      if (!instance || (!canRun && !isRunning)) return;
+
+      if (isRunning) {
+        // 停止任务
+        try {
+          log.info(`[${instanceName}] 停止任务...`);
+          setIsStopping(true);
+          await maaService.stopTask(instanceId);
+          if (projectInterface?.agent) {
             await maaService.stopAgent(instanceId);
-          } catch {
-            // 忽略
           }
+          updateInstance(instanceId, { isRunning: false });
+          setInstanceTaskStatus(instanceId, null);
+          setInstanceCurrentTaskId(instanceId, null);
+          clearTaskRunStatus(instanceId);
+          clearPendingTasks(instanceId);
+          runningInstanceIdRef.current = null;
+        } catch (err) {
+          log.error(`[${instanceName}] 停止任务失败:`, err);
+        } finally {
+          setIsStopping(false);
         }
-        updateInstance(instanceId, { isRunning: false });
-        setInstanceTaskStatus(instanceId, 'Failed');
-        clearTaskRunStatus(instanceId);
-        clearPendingTasks(instanceId);
-        setIsStarting(false);
+      } else {
+        // 启动任务
+        if (!canRun) return;
+
+        setIsStarting(true);
+
+        try {
+          log.info(`[${instanceName}] 开始执行任务, 数量:`, enabledTasks.length);
+
+          // 构建任务配置列表
+          const taskConfigs: TaskConfig[] = [];
+          for (const selectedTask of enabledTasks) {
+            const taskDef = projectInterface?.task.find((t) => t.name === selectedTask.taskName);
+            if (!taskDef) continue;
+
+            taskConfigs.push({
+              entry: taskDef.entry,
+              pipeline_override: generateTaskPipelineOverride(selectedTask, projectInterface),
+            });
+            const taskDisplayName = selectedTask.customName || selectedTask.taskName;
+            registerEntryTaskName(taskDef.entry, taskDisplayName);
+          }
+
+          if (taskConfigs.length === 0) {
+            log.warn(`[${instanceName}] 没有可执行的任务`);
+            setIsStarting(false);
+            return;
+          }
+
+          // 准备 Agent 配置
+          let agentConfig: AgentConfig | undefined;
+          if (projectInterface?.agent) {
+            agentConfig = {
+              child_exec: projectInterface.agent.child_exec,
+              child_args: projectInterface.agent.child_args,
+              identifier: projectInterface.agent.identifier,
+              timeout: projectInterface.agent.timeout,
+            };
+          }
+
+          updateInstance(instanceId, { isRunning: true });
+          setInstanceTaskStatus(instanceId, 'Running');
+
+          // 启动任务
+          const taskIds = await maaService.startTasks(
+            instanceId,
+            taskConfigs,
+            agentConfig,
+            basePath,
+          );
+
+          log.info(`[${instanceName}] 任务已提交, task_ids:`, taskIds);
+
+          // 初始化任务运行状态
+          const enabledTaskIds = enabledTasks.map((t) => t.id);
+          setAllTasksRunStatus(instanceId, enabledTaskIds, 'pending');
+
+          // 记录映射关系
+          taskIds.forEach((maaTaskId, index) => {
+            if (enabledTasks[index]) {
+              registerMaaTaskMapping(instanceId, maaTaskId, enabledTasks[index].id);
+              const taskDisplayName =
+                enabledTasks[index].customName || enabledTasks[index].taskName;
+              registerTaskIdName(maaTaskId, taskDisplayName);
+            }
+          });
+
+          // 第一个任务设为 running
+          if (enabledTasks.length > 0) {
+            setTaskRunStatus(instanceId, enabledTasks[0].id, 'running');
+          }
+
+          // 设置任务队列
+          runningInstanceIdRef.current = instanceId;
+          setPendingTaskIds(instanceId, taskIds);
+          setCurrentTaskIndex(instanceId, 0);
+          setInstanceCurrentTaskId(instanceId, taskIds[0]);
+          setIsStarting(false);
+        } catch (err) {
+          log.error(`[${instanceName}] 任务启动异常:`, err);
+          if (projectInterface?.agent) {
+            try {
+              await maaService.stopAgent(instanceId);
+            } catch {
+              // 忽略
+            }
+          }
+          updateInstance(instanceId, { isRunning: false });
+          setInstanceTaskStatus(instanceId, 'Failed');
+          clearTaskRunStatus(instanceId);
+          clearPendingTasks(instanceId);
+          setIsStarting(false);
+        }
       }
-    }
-  }, [
-    instance, instanceId, instanceName, isRunning, canRun, enabledTasks,
-    projectInterface, basePath, updateInstance, setInstanceTaskStatus,
-    setInstanceCurrentTaskId, clearTaskRunStatus, clearPendingTasks,
-    setAllTasksRunStatus, registerMaaTaskMapping, setTaskRunStatus,
-    setPendingTaskIds, setCurrentTaskIndex, registerTaskIdName, registerEntryTaskName,
-  ]);
+    },
+    [
+      instance,
+      instanceId,
+      instanceName,
+      isRunning,
+      canRun,
+      enabledTasks,
+      projectInterface,
+      basePath,
+      updateInstance,
+      setInstanceTaskStatus,
+      setInstanceCurrentTaskId,
+      clearTaskRunStatus,
+      clearPendingTasks,
+      setAllTasksRunStatus,
+      registerMaaTaskMapping,
+      setTaskRunStatus,
+      setPendingTaskIds,
+      setCurrentTaskIndex,
+      registerTaskIdName,
+      registerEntryTaskName,
+    ],
+  );
 
   // 获取截图
   const captureFrame = useCallback(async (): Promise<string | null> => {
@@ -323,7 +349,7 @@ function InstanceCard({
   const streamLoop = useCallback(async () => {
     // 初始化下一帧时间
     let nextFrameTime = Date.now();
-    
+
     while (streamingRef.current) {
       // 计算需要等待的时间（sleep until 下一帧时间点）
       const now = Date.now();
@@ -331,7 +357,7 @@ function InstanceCard({
       if (sleepTime > 0) {
         await new Promise((resolve) => setTimeout(resolve, sleepTime));
       }
-      
+
       // 计算下一帧时间
       const frameInterval = frameIntervalRef.current;
       if (frameInterval > 0) {
@@ -369,7 +395,7 @@ function InstanceCard({
   useEffect(() => {
     // 同步 ref 与 store 状态
     streamingRef.current = isStreaming;
-    
+
     // 如果状态变为开启且已连接，启动流
     if (isStreaming && isConnected) {
       streamLoop();
@@ -379,12 +405,12 @@ function InstanceCard({
   // 连接后自动开始截图流
   const prevConnectedRef = useRef(false);
   const hasAutoStartedRef = useRef(false);
-  
+
   // 组件挂载或状态恢复后，如果已连接，自动启动截图流
   useEffect(() => {
     // 避免重复启动
     if (hasAutoStartedRef.current) return;
-    
+
     if (isConnected && !isStreaming) {
       hasAutoStartedRef.current = true;
       streamingRef.current = true;
@@ -392,12 +418,12 @@ function InstanceCard({
       streamLoop();
     }
   }, [isConnected, isStreaming, instanceId, setInstanceScreenshotStreaming, streamLoop]);
-  
+
   // 连接状态变化时的处理（从未连接变为已连接时重新启动）
   useEffect(() => {
     const wasConnected = prevConnectedRef.current;
     prevConnectedRef.current = isConnected;
-    
+
     // 从未连接变为已连接时，重置自动启动标记并启动
     if (isConnected && !wasConnected && !isStreaming) {
       hasAutoStartedRef.current = true;
@@ -407,12 +433,14 @@ function InstanceCard({
     }
   }, [isConnected, isStreaming, instanceId, setInstanceScreenshotStreaming, streamLoop]);
 
-
   // 全屏模式切换
-  const toggleFullscreen = useCallback((e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setIsFullscreen(!isFullscreen);
-  }, [isFullscreen]);
+  const toggleFullscreen = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setIsFullscreen(!isFullscreen);
+    },
+    [isFullscreen],
+  );
 
   // ESC 键退出全屏
   useEffect(() => {
@@ -421,11 +449,11 @@ function InstanceCard({
         setIsFullscreen(false);
       }
     };
-    
+
     if (isFullscreen) {
       document.addEventListener('keydown', handleKeyDown);
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -452,9 +480,7 @@ function InstanceCard({
     try {
       const response = await fetch(screenshotUrl);
       const blob = await response.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': blob }),
-      ]);
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
     } catch (err) {
       log.warn('复制截图失败:', err);
     }
@@ -490,9 +516,7 @@ function InstanceCard({
       const menuItems: MenuItem[] = [
         {
           id: 'stream',
-          label: isStreaming
-            ? t('contextMenu.stopStream')
-            : t('contextMenu.startStream'),
+          label: isStreaming ? t('contextMenu.stopStream') : t('contextMenu.startStream'),
           icon: isStreaming ? Pause : Play,
           disabled: !isConnected,
           onClick: () => {
@@ -563,9 +587,8 @@ function InstanceCard({
       copyScreenshot,
       disconnect,
       showMenu,
-    ]
+    ],
   );
-
 
   return (
     <div
@@ -573,18 +596,14 @@ function InstanceCard({
       onContextMenu={handleContextMenu}
       className={clsx(
         'group relative bg-bg-secondary rounded-xl border-2 overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg',
-        isActive ? 'border-accent shadow-md' : 'border-border hover:border-accent/50'
+        isActive ? 'border-accent shadow-md' : 'border-border hover:border-accent/50',
       )}
     >
       {/* 截图区域 */}
       <div className="aspect-video bg-bg-tertiary relative overflow-hidden">
         {screenshotUrl ? (
           <>
-            <img
-              src={screenshotUrl}
-              alt="Screenshot"
-              className="w-full h-full object-contain"
-            />
+            <img src={screenshotUrl} alt="Screenshot" className="w-full h-full object-contain" />
             {/* 流状态指示器 */}
             {isStreaming && (
               <div className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-green-500/80 rounded text-white text-xs">
@@ -612,22 +631,22 @@ function InstanceCard({
               isStarting || isStopping
                 ? 'bg-yellow-500/80 text-white'
                 : isRunning
-                ? 'bg-red-500/80 hover:bg-red-600/80 text-white'
-                : canRun
-                ? 'bg-green-500/80 hover:bg-green-600/80 text-white'
-                : 'bg-black/30 text-white/50 cursor-not-allowed',
-              'opacity-0 group-hover:opacity-100'
+                  ? 'bg-red-500/80 hover:bg-red-600/80 text-white'
+                  : canRun
+                    ? 'bg-green-500/80 hover:bg-green-600/80 text-white'
+                    : 'bg-black/30 text-white/50 cursor-not-allowed',
+              'opacity-0 group-hover:opacity-100',
             )}
             title={
               isStarting
                 ? t('taskList.startingTasks')
                 : isStopping
-                ? t('taskList.stoppingTasks')
-                : isRunning
-                ? t('taskList.stopTasks')
-                : canRun
-                ? t('taskList.startTasks')
-                : t('dashboard.noEnabledTasks')
+                  ? t('taskList.stoppingTasks')
+                  : isRunning
+                    ? t('taskList.stopTasks')
+                    : canRun
+                      ? t('taskList.startTasks')
+                      : t('dashboard.noEnabledTasks')
             }
           >
             {isStarting || isStopping ? (
@@ -649,7 +668,7 @@ function InstanceCard({
             <span
               className={clsx(
                 'font-medium truncate flex-shrink-0',
-                isActive ? 'text-accent' : 'text-text-primary'
+                isActive ? 'text-accent' : 'text-text-primary',
               )}
             >
               {instanceName}
@@ -675,7 +694,7 @@ function InstanceCard({
               </div>
             )}
           </div>
-          
+
           {/* 右侧：状态按钮（类似"开始任务"按钮样式） */}
           <div
             className={clsx(
@@ -683,18 +702,20 @@ function InstanceCard({
               isRunning || taskStatus === 'Running'
                 ? 'bg-success text-white'
                 : taskStatus === 'Failed'
-                ? 'bg-error text-white'
-                : taskStatus === 'Succeeded'
-                ? 'bg-accent text-white'
-                : isConnected
-                ? 'bg-bg-tertiary text-text-secondary'
-                : 'bg-bg-active text-text-muted'
+                  ? 'bg-error text-white'
+                  : taskStatus === 'Succeeded'
+                    ? 'bg-accent text-white'
+                    : isConnected
+                      ? 'bg-bg-tertiary text-text-secondary'
+                      : 'bg-bg-active text-text-muted',
             )}
           >
             {isRunning || taskStatus === 'Running' ? (
               <>
                 <Loader2 className="w-3 h-3 animate-spin" />
-                <span className="truncate max-w-[80px]">{runningTaskName || t('dashboard.running')}</span>
+                <span className="truncate max-w-[80px]">
+                  {runningTaskName || t('dashboard.running')}
+                </span>
               </>
             ) : taskStatus === 'Failed' ? (
               <>
@@ -730,21 +751,17 @@ function InstanceCard({
 
       {/* 右键菜单 */}
       {menuState.isOpen && (
-        <ContextMenu
-          items={menuState.items}
-          position={menuState.position}
-          onClose={hideMenu}
-        />
+        <ContextMenu items={menuState.items} position={menuState.position} onClose={hideMenu} />
       )}
 
       {/* 全屏模态框 */}
       {isFullscreen && screenshotUrl && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-8"
           onClick={toggleFullscreen}
         >
           {/* 卡片容器 */}
-          <div 
+          <div
             className="relative bg-bg-secondary rounded-xl border border-border shadow-2xl max-w-[90vw] max-h-[90vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             onContextMenu={handleContextMenu}
@@ -753,9 +770,7 @@ function InstanceCard({
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-bg-tertiary/50">
               <div className="flex items-center gap-2">
                 <Monitor className="w-4 h-4 text-text-secondary" />
-                <span className="text-sm font-medium text-text-primary">
-                  {instanceName}
-                </span>
+                <span className="text-sm font-medium text-text-primary">{instanceName}</span>
                 {/* 流模式指示器 */}
                 {isStreaming && (
                   <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/90 rounded text-white text-xs ml-2">
@@ -772,7 +787,7 @@ function InstanceCard({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {/* 图片内容区 */}
             <div className="p-4 bg-bg-primary flex items-center justify-center overflow-auto">
               <img
@@ -790,12 +805,7 @@ function InstanceCard({
 
 export function DashboardView() {
   const { t } = useTranslation();
-  const {
-    instances,
-    activeInstanceId,
-    setActiveInstance,
-    toggleDashboardView,
-  } = useAppStore();
+  const { instances, activeInstanceId, setActiveInstance, toggleDashboardView } = useAppStore();
 
   const handleSelectInstance = (instanceId: string) => {
     setActiveInstance(instanceId);
@@ -817,10 +827,10 @@ export function DashboardView() {
               instances.length === 1
                 ? 'grid-cols-1 max-w-2xl mx-auto'
                 : instances.length === 2
-                ? 'grid-cols-2 max-w-4xl mx-auto'
-                : instances.length <= 4
-                ? 'grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto'
-                : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  ? 'grid-cols-2 max-w-4xl mx-auto'
+                  : instances.length <= 4
+                    ? 'grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto'
+                    : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4',
             )}
           >
             {instances.map((instance) => (

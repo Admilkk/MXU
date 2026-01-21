@@ -28,9 +28,14 @@ interface VersionInfoProps {
 }
 
 /** 版本信息组件 */
-export function VersionInfo({ currentVersion, latestVersion, channel, isUpdated = false }: VersionInfoProps) {
+export function VersionInfo({
+  currentVersion,
+  latestVersion,
+  channel,
+  isUpdated = false,
+}: VersionInfoProps) {
   const { t } = useTranslation();
-  
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
@@ -75,8 +80,8 @@ interface ReleaseNotesProps {
 }
 
 /** 更新日志组件 */
-export function ReleaseNotes({ 
-  releaseNote, 
+export function ReleaseNotes({
+  releaseNote,
   showTitle = true,
   collapsibleTitle = false,
   maxHeightClass = 'max-h-48',
@@ -86,33 +91,46 @@ export function ReleaseNotes({
   fillHeight = false,
 }: ReleaseNotesProps) {
   const { t } = useTranslation();
-  
+
   return (
     <div className={clsx(fillHeight ? 'flex flex-col min-h-0' : 'space-y-2', className)}>
-      {showTitle && (
-        collapsibleTitle ? (
-          <div className={clsx('flex items-center gap-1 text-sm font-medium text-text-primary', fillHeight && 'shrink-0 mb-2')}>
+      {showTitle &&
+        (collapsibleTitle ? (
+          <div
+            className={clsx(
+              'flex items-center gap-1 text-sm font-medium text-text-primary',
+              fillHeight && 'shrink-0 mb-2',
+            )}
+          >
             <ChevronRight className="w-3 h-3" />
             <span>{t('mirrorChyan.releaseNotes')}</span>
           </div>
         ) : (
-          <p className={clsx('text-sm font-medium text-text-primary', fillHeight && 'shrink-0 mb-2')}>
+          <p
+            className={clsx('text-sm font-medium text-text-primary', fillHeight && 'shrink-0 mb-2')}
+          >
             {t('mirrorChyan.releaseNotes')}
           </p>
-        )
-      )}
-      <div className={clsx(
-        'overflow-y-auto rounded-lg p-3 border border-border',
-        fillHeight ? 'flex-1 min-h-0' : maxHeightClass,
-        bgClass
-      )}>
+        ))}
+      <div
+        className={clsx(
+          'overflow-y-auto rounded-lg p-3 border border-border',
+          fillHeight ? 'flex-1 min-h-0' : maxHeightClass,
+          bgClass,
+        )}
+      >
         {releaseNote ? (
           <div
-            className={clsx(textSizeClass, 'text-text-secondary prose prose-sm max-w-none leading-relaxed')}
+            className={clsx(
+              textSizeClass,
+              'text-text-secondary prose prose-sm max-w-none leading-relaxed',
+            )}
             dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(releaseNote) }}
           />
         ) : (
-          <p className={clsx(textSizeClass, 'text-text-muted italic')}>{t('mirrorChyan.noReleaseNotes')}</p>
+          <p className={clsx(textSizeClass, 'text-text-muted italic')}>
+            {t('mirrorChyan.noReleaseNotes')}
+          </p>
         )}
       </div>
     </div>
@@ -146,9 +164,9 @@ export function DownloadProgressBar({
   progressBgClass = 'bg-bg-tertiary',
 }: DownloadProgressBarProps) {
   const { t } = useTranslation();
-  
+
   if (downloadStatus === 'idle') return null;
-  
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-xs text-text-muted">
@@ -157,11 +175,9 @@ export function DownloadProgressBar({
           {downloadStatus === 'completed' && t('mirrorChyan.downloadComplete')}
           {downloadStatus === 'failed' && t('mirrorChyan.downloadFailed')}
         </span>
-        {downloadProgress && (
-          <span>{downloadProgress.progress.toFixed(1)}%</span>
-        )}
+        {downloadProgress && <span>{downloadProgress.progress.toFixed(1)}%</span>}
       </div>
-      
+
       {/* 进度条 */}
       <div className={clsx('h-2 rounded-full overflow-hidden', progressBgClass)}>
         <div
@@ -169,7 +185,7 @@ export function DownloadProgressBar({
             'h-full rounded-full transition-all duration-100',
             downloadStatus === 'completed' && 'bg-success',
             downloadStatus === 'downloading' && 'bg-accent',
-            downloadStatus === 'failed' && 'bg-error'
+            downloadStatus === 'failed' && 'bg-error',
           )}
           style={{ width: `${downloadProgress?.progress || 0}%` }}
         />
@@ -178,12 +194,11 @@ export function DownloadProgressBar({
       {/* 下载详情 */}
       <div className="flex items-center justify-between text-xs text-text-muted">
         <span>
-          {downloadProgress && downloadProgress.totalSize > 0 
+          {downloadProgress && downloadProgress.totalSize > 0
             ? `${formatSize(downloadProgress.downloadedSize)} / ${formatSize(downloadProgress.totalSize)}`
-            : fileSize 
+            : fileSize
               ? formatSize(fileSize)
-              : ''
-          }
+              : ''}
         </span>
         {downloadStatus === 'downloading' && downloadProgress && downloadProgress.speed > 0 && (
           <span>{formatSpeed(downloadProgress.speed)}</span>
@@ -207,14 +222,13 @@ export function DownloadProgressBar({
           </button>
         )}
       </div>
-      
+
       {/* 下载来源标识 */}
       {downloadSource && (
         <div className="text-xs text-text-muted">
-          {downloadSource === 'github' 
+          {downloadSource === 'github'
             ? t('mirrorChyan.downloadFromGitHub')
-            : t('mirrorChyan.downloadFromMirrorChyan')
-          }
+            : t('mirrorChyan.downloadFromMirrorChyan')}
         </div>
       )}
     </div>

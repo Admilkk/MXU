@@ -25,13 +25,25 @@ import {
   Paintbrush,
   Info,
 } from 'lucide-react';
-import { checkAndPrepareDownload, openMirrorChyanWebsite, downloadUpdate, getUpdateSavePath, cancelDownload, MIRRORCHYAN_ERROR_CODES } from '@/services/updateService';
+import {
+  checkAndPrepareDownload,
+  openMirrorChyanWebsite,
+  downloadUpdate,
+  getUpdateSavePath,
+  cancelDownload,
+  MIRRORCHYAN_ERROR_CODES,
+} from '@/services/updateService';
 import { clearAllCache, getCacheStats } from '@/services/cacheService';
 import type { DownloadProgress } from '@/stores/appStore';
 import { defaultWindowSize } from '@/types/config';
 import { useAppStore } from '@/stores/appStore';
 import { setLanguage as setI18nLanguage, getInterfaceLangKey } from '@/i18n';
-import { resolveContent, loadIconAsDataUrl, simpleMarkdownToHtml, resolveI18nText } from '@/services/contentResolver';
+import {
+  resolveContent,
+  loadIconAsDataUrl,
+  simpleMarkdownToHtml,
+  resolveI18nText,
+} from '@/services/contentResolver';
 import { maaService } from '@/services/maaService';
 import { ReleaseNotes, DownloadProgressBar } from './UpdateInfoCard';
 import { FrameRateSelector } from './FrameRateSelector';
@@ -99,107 +111,114 @@ export function SettingsPage() {
 
   // 调试：添加日志（提前定义以便在 handleCdkChange 中使用）
   const addDebugLog = useCallback((msg: string) => {
-    setDebugLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+    setDebugLog((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
   }, []);
 
   // 开始下载（支持指定 updateInfo，用于切换下载源后重新下载）
-  const startDownload = useCallback(async (targetUpdateInfo?: typeof updateInfo) => {
-    const info = targetUpdateInfo || updateInfo;
-    if (!info?.downloadUrl) return;
+  const startDownload = useCallback(
+    async (targetUpdateInfo?: typeof updateInfo) => {
+      const info = targetUpdateInfo || updateInfo;
+      if (!info?.downloadUrl) return;
 
-    setDownloadStatus('downloading');
-    setDownloadProgress({
-      downloadedSize: 0,
-      totalSize: info.fileSize || 0,
-      speed: 0,
-      progress: 0,
-    });
-
-    try {
-      const savePath = await getUpdateSavePath(basePath, info.filename);
-      setDownloadSavePath(savePath);
-
-      const success = await downloadUpdate({
-        url: info.downloadUrl,
-        savePath,
-        totalSize: info.fileSize,
-        onProgress: (progress: DownloadProgress) => {
-          setDownloadProgress(progress);
-        },
+      setDownloadStatus('downloading');
+      setDownloadProgress({
+        downloadedSize: 0,
+        totalSize: info.fileSize || 0,
+        speed: 0,
+        progress: 0,
       });
 
-      if (success) {
-        setDownloadStatus('completed');
-      } else {
-        setDownloadStatus('failed');
-      }
-    } catch (error) {
-      console.error('下载失败:', error);
-      setDownloadStatus('failed');
-    }
-  }, [updateInfo, basePath, setDownloadStatus, setDownloadProgress, setDownloadSavePath]);
-
-  // 处理 CDK 变化：如果正在使用 GitHub 下载，切换到 Mirror酱
-  const handleCdkChange = useCallback(async (newCdk: string) => {
-    const previousCdk = mirrorChyanSettings.cdk;
-    setMirrorChyanCdk(newCdk);
-
-    // 检测：从空 CDK 变为有效 CDK，且正在使用 GitHub 下载
-    const isEnteringCdk = !previousCdk && newCdk.trim().length > 0;
-    const isDownloadingFromGitHub = downloadStatus === 'downloading' && updateInfo?.downloadSource === 'github';
-
-    if (isEnteringCdk && isDownloadingFromGitHub && projectInterface?.mirrorchyan_rid) {
-      addDebugLog('检测到填入 CDK，正在停止 GitHub 下载并切换到 Mirror酱...');
-
-      // 取消当前下载并等待完成
-      await cancelDownload();
-      resetDownloadState();
-
-      // 使用新 CDK 重新检查更新
-      setUpdateCheckLoading(true);
       try {
-        const result = await checkAndPrepareDownload({
-          resourceId: projectInterface.mirrorchyan_rid,
-          currentVersion: projectInterface.version || '',
-          cdk: newCdk,
-          channel: mirrorChyanSettings.channel,
-          userAgent: 'MXU',
-          githubUrl: projectInterface.github,
-          basePath,
+        const savePath = await getUpdateSavePath(basePath, info.filename);
+        setDownloadSavePath(savePath);
+
+        const success = await downloadUpdate({
+          url: info.downloadUrl,
+          savePath,
+          totalSize: info.fileSize,
+          onProgress: (progress: DownloadProgress) => {
+            setDownloadProgress(progress);
+          },
         });
 
-        if (result) {
-          setUpdateInfo(result);
-          if (result.hasUpdate && result.downloadUrl && result.downloadSource === 'mirrorchyan') {
-            addDebugLog(`已切换到 Mirror酱 下载: ${result.versionName}`);
-            // 自动开始新的下载
-            await startDownload(result);
-          } else if (result.hasUpdate && result.downloadUrl) {
-            addDebugLog(`CDK 无效或不匹配，继续使用 ${result.downloadSource} 下载`);
-            await startDownload(result);
-          } else {
-            addDebugLog('无法获取 Mirror酱 下载链接，请检查 CDK');
-          }
+        if (success) {
+          setDownloadStatus('completed');
+        } else {
+          setDownloadStatus('failed');
         }
-      } catch (err) {
-        addDebugLog(`切换下载源失败: ${err}`);
-      } finally {
-        setUpdateCheckLoading(false);
+      } catch (error) {
+        console.error('下载失败:', error);
+        setDownloadStatus('failed');
       }
-    }
-  }, [
-    mirrorChyanSettings.cdk,
-    mirrorChyanSettings.channel,
-    setMirrorChyanCdk,
-    downloadStatus,
-    updateInfo,
-    projectInterface,
-    basePath,
-    resetDownloadState,
-    setUpdateCheckLoading,
-    setUpdateInfo,
-    startDownload,
-  ]);
+    },
+    [updateInfo, basePath, setDownloadStatus, setDownloadProgress, setDownloadSavePath],
+  );
+
+  // 处理 CDK 变化：如果正在使用 GitHub 下载，切换到 Mirror酱
+  const handleCdkChange = useCallback(
+    async (newCdk: string) => {
+      const previousCdk = mirrorChyanSettings.cdk;
+      setMirrorChyanCdk(newCdk);
+
+      // 检测：从空 CDK 变为有效 CDK，且正在使用 GitHub 下载
+      const isEnteringCdk = !previousCdk && newCdk.trim().length > 0;
+      const isDownloadingFromGitHub =
+        downloadStatus === 'downloading' && updateInfo?.downloadSource === 'github';
+
+      if (isEnteringCdk && isDownloadingFromGitHub && projectInterface?.mirrorchyan_rid) {
+        addDebugLog('检测到填入 CDK，正在停止 GitHub 下载并切换到 Mirror酱...');
+
+        // 取消当前下载并等待完成
+        await cancelDownload();
+        resetDownloadState();
+
+        // 使用新 CDK 重新检查更新
+        setUpdateCheckLoading(true);
+        try {
+          const result = await checkAndPrepareDownload({
+            resourceId: projectInterface.mirrorchyan_rid,
+            currentVersion: projectInterface.version || '',
+            cdk: newCdk,
+            channel: mirrorChyanSettings.channel,
+            userAgent: 'MXU',
+            githubUrl: projectInterface.github,
+            basePath,
+          });
+
+          if (result) {
+            setUpdateInfo(result);
+            if (result.hasUpdate && result.downloadUrl && result.downloadSource === 'mirrorchyan') {
+              addDebugLog(`已切换到 Mirror酱 下载: ${result.versionName}`);
+              // 自动开始新的下载
+              await startDownload(result);
+            } else if (result.hasUpdate && result.downloadUrl) {
+              addDebugLog(`CDK 无效或不匹配，继续使用 ${result.downloadSource} 下载`);
+              await startDownload(result);
+            } else {
+              addDebugLog('无法获取 Mirror酱 下载链接，请检查 CDK');
+            }
+          }
+        } catch (err) {
+          addDebugLog(`切换下载源失败: ${err}`);
+        } finally {
+          setUpdateCheckLoading(false);
+        }
+      }
+    },
+    [
+      mirrorChyanSettings.cdk,
+      mirrorChyanSettings.channel,
+      setMirrorChyanCdk,
+      downloadStatus,
+      updateInfo,
+      projectInterface,
+      basePath,
+      resetDownloadState,
+      setUpdateCheckLoading,
+      setUpdateInfo,
+      startDownload,
+    ],
+  );
 
   // 打开模态框并自动开始安装
   const handleInstallNow = useCallback(() => {
@@ -223,7 +242,7 @@ export function SettingsPage() {
 
     return t('mirrorChyan.errors.unknown', {
       code,
-      message: updateInfo.errorMessage || ''
+      message: updateInfo.errorMessage || '',
     });
   }, [updateInfo?.errorCode, updateInfo?.errorMessage, t]);
 
@@ -327,7 +346,9 @@ export function SettingsPage() {
         if (result.hasUpdate) {
           addDebugLog(`发现新版本: ${result.versionName}`);
           if (result.downloadUrl) {
-            addDebugLog(`下载来源: ${result.downloadSource === 'github' ? 'GitHub' : 'Mirror酱 CDN'}`);
+            addDebugLog(
+              `下载来源: ${result.downloadSource === 'github' ? 'GitHub' : 'Mirror酱 CDN'}`,
+            );
           } else {
             addDebugLog('无可用下载链接');
           }
@@ -356,13 +377,17 @@ export function SettingsPage() {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const { LogicalSize } = await import('@tauri-apps/api/dpi');
       const currentWindow = getCurrentWindow();
-      await currentWindow.setSize(new LogicalSize(defaultWindowSize.width, defaultWindowSize.height));
+      await currentWindow.setSize(
+        new LogicalSize(defaultWindowSize.width, defaultWindowSize.height),
+      );
 
       // 同时也重置右侧面板尺寸和状态
       setRightPanelWidth(320);
       setRightPanelCollapsed(false);
 
-      addDebugLog(`窗口尺寸已重置为 ${defaultWindowSize.width}x${defaultWindowSize.height}，界面布局已重置`);
+      addDebugLog(
+        `窗口尺寸已重置为 ${defaultWindowSize.width}x${defaultWindowSize.height}，界面布局已重置`,
+      );
     } catch (err) {
       addDebugLog(`重置窗口尺寸失败: ${err}`);
     }
@@ -410,7 +435,7 @@ export function SettingsPage() {
   // 加载缓存统计
   useEffect(() => {
     if (isTauri() && basePath) {
-      getCacheStats(basePath).then(stats => {
+      getCacheStats(basePath).then((stats) => {
         setCacheEntryCount(stats.entryCount);
       });
     }
@@ -433,9 +458,7 @@ export function SettingsPage() {
   };
 
   const projectName =
-    resolveI18nText(projectInterface?.label, translations) ||
-    projectInterface?.name ||
-    'MXU';
+    resolveI18nText(projectInterface?.label, translations) || projectInterface?.name || 'MXU';
   const version = projectInterface?.version || '0.1.0';
   // 渲染 Markdown 内容
   const renderMarkdown = (content: string) => {
@@ -450,9 +473,7 @@ export function SettingsPage() {
 
   // 目录索引配置
   const tocItems = useMemo(() => {
-    const items = [
-      { id: 'appearance', icon: Paintbrush, labelKey: 'settings.appearance' },
-    ];
+    const items = [{ id: 'appearance', icon: Paintbrush, labelKey: 'settings.appearance' }];
     // 仅在配置了 mirrorchyan_rid 时显示软件更新
     if (projectInterface?.mirrorchyan_rid) {
       items.push({ id: 'update', icon: Download, labelKey: 'mirrorChyan.title' });
@@ -487,10 +508,12 @@ export function SettingsPage() {
     if (!container) return;
 
     const handleScroll = () => {
-      const sections = tocItems.map(item => ({
-        id: item.id,
-        element: document.getElementById(`section-${item.id}`),
-      })).filter(s => s.element);
+      const sections = tocItems
+        .map((item) => ({
+          id: item.id,
+          element: document.getElementById(`section-${item.id}`),
+        }))
+        .filter((s) => s.element);
 
       // 找到当前视口中的 section
       const scrollTop = container.scrollTop;
@@ -521,16 +544,14 @@ export function SettingsPage() {
         >
           <ArrowLeft className="w-5 h-5 text-text-secondary" />
         </button>
-        <h1 className="text-lg font-semibold text-text-primary">
-          {t('settings.title')}
-        </h1>
+        <h1 className="text-lg font-semibold text-text-primary">{t('settings.title')}</h1>
       </div>
 
       {/* 主体区域：左侧目录 + 右侧内容 */}
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧固定目录索引 */}
         <nav className="w-40 flex-shrink-0 bg-bg-secondary border-r border-border p-4 space-y-1">
-          {tocItems.map(item => {
+          {tocItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
             return (
@@ -541,7 +562,7 @@ export function SettingsPage() {
                   'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
                   isActive
                     ? 'bg-accent text-white'
-                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
                 )}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
@@ -555,253 +576,259 @@ export function SettingsPage() {
         <div className="flex-1 overflow-y-auto" ref={scrollContainerRef}>
           <div className="max-w-2xl mx-auto p-6 space-y-8">
             {/* 外观设置 */}
-          <section id="section-appearance" className="space-y-4 scroll-mt-4">
-            <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
-              <Paintbrush className="w-4 h-4" />
-              {t('settings.appearance')}
-            </h2>
+            <section id="section-appearance" className="space-y-4 scroll-mt-4">
+              <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                <Paintbrush className="w-4 h-4" />
+                {t('settings.appearance')}
+              </h2>
 
-            {/* 语言 */}
-            <div className="bg-bg-secondary rounded-xl p-4 border border-border">
-              <div className="flex items-center gap-3 mb-3">
-                <Globe className="w-5 h-5 text-accent" />
-                <span className="font-medium text-text-primary">{t('settings.language')}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleLanguageChange('zh-CN')}
-                  className={clsx(
-                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    language === 'zh-CN'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                  )}
-                >
-                  简体中文
-                </button>
-                <button
-                  onClick={() => handleLanguageChange('en-US')}
-                  className={clsx(
-                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    language === 'en-US'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                  )}
-                >
-                  English
-                </button>
-                <button
-                  onClick={() => handleLanguageChange('ja-JP')}
-                  className={clsx(
-                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    language === 'ja-JP'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                  )}
-                >
-                  日本語
-                </button>
-                <button
-                  onClick={() => handleLanguageChange('ko-KR')}
-                  className={clsx(
-                    'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    language === 'ko-KR'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                  )}
-                >
-                  한국어
-                </button>
-              </div>
-            </div>
-
-            {/* 主题 */}
-            <div className="bg-bg-secondary rounded-xl p-4 border border-border">
-              <div className="flex items-center gap-3 mb-3">
-                <Palette className="w-5 h-5 text-accent" />
-                <span className="font-medium text-text-primary">{t('settings.theme')}</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTheme('light')}
-                  className={clsx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    theme === 'light'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                  )}
-                >
-                  {t('settings.themeLight')}
-                </button>
-                <button
-                  onClick={() => setTheme('dark')}
-                  className={clsx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    theme === 'dark'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                  )}
-                >
-                  {t('settings.themeDark')}
-                </button>
-              </div>
-            </div>
-
-            {/* 选项预览 */}
-            <div className="bg-bg-secondary rounded-xl p-4 border border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ListChecks className="w-5 h-5 text-accent" />
-                  <div>
-                    <span className="font-medium text-text-primary">{t('settings.showOptionPreview')}</span>
-                    <p className="text-xs text-text-muted mt-0.5">{t('settings.showOptionPreviewHint')}</p>
-                  </div>
+              {/* 语言 */}
+              <div className="bg-bg-secondary rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-3 mb-3">
+                  <Globe className="w-5 h-5 text-accent" />
+                  <span className="font-medium text-text-primary">{t('settings.language')}</span>
                 </div>
-                <button
-                  onClick={() => setShowOptionPreview(!showOptionPreview)}
-                  className={clsx(
-                    'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
-                    showOptionPreview ? 'bg-accent' : 'bg-bg-active'
-                  )}
-                >
-                  <span
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleLanguageChange('zh-CN')}
                     className={clsx(
-                      'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
-                      showOptionPreview ? 'translate-x-5' : 'translate-x-0'
+                      'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      language === 'zh-CN'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
                     )}
-                  />
-                </button>
+                  >
+                    简体中文
+                  </button>
+                  <button
+                    onClick={() => handleLanguageChange('en-US')}
+                    className={clsx(
+                      'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      language === 'en-US'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                    )}
+                  >
+                    English
+                  </button>
+                  <button
+                    onClick={() => handleLanguageChange('ja-JP')}
+                    className={clsx(
+                      'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      language === 'ja-JP'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                    )}
+                  >
+                    日本語
+                  </button>
+                  <button
+                    onClick={() => handleLanguageChange('ko-KR')}
+                    className={clsx(
+                      'px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      language === 'ko-KR'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                    )}
+                  >
+                    한국어
+                  </button>
+                </div>
               </div>
-            </div>
+
+              {/* 主题 */}
+              <div className="bg-bg-secondary rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-3 mb-3">
+                  <Palette className="w-5 h-5 text-accent" />
+                  <span className="font-medium text-text-primary">{t('settings.theme')}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setTheme('light')}
+                    className={clsx(
+                      'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      theme === 'light'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                    )}
+                  >
+                    {t('settings.themeLight')}
+                  </button>
+                  <button
+                    onClick={() => setTheme('dark')}
+                    className={clsx(
+                      'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      theme === 'dark'
+                        ? 'bg-accent text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                    )}
+                  >
+                    {t('settings.themeDark')}
+                  </button>
+                </div>
+              </div>
+
+              {/* 选项预览 */}
+              <div className="bg-bg-secondary rounded-xl p-4 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <ListChecks className="w-5 h-5 text-accent" />
+                    <div>
+                      <span className="font-medium text-text-primary">
+                        {t('settings.showOptionPreview')}
+                      </span>
+                      <p className="text-xs text-text-muted mt-0.5">
+                        {t('settings.showOptionPreviewHint')}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowOptionPreview(!showOptionPreview)}
+                    className={clsx(
+                      'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
+                      showOptionPreview ? 'bg-accent' : 'bg-bg-active',
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        showOptionPreview ? 'translate-x-5' : 'translate-x-0',
+                      )}
+                    />
+                  </button>
+                </div>
+              </div>
 
               {/* 实时截图帧率 */}
               <FrameRateSelector />
             </section>
 
-          {/* MirrorChyan 更新设置 */}
-          {projectInterface?.mirrorchyan_rid && (
-            <section id="section-update" className="space-y-4 scroll-mt-4">
-              <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                {t('mirrorChyan.title')}
-              </h2>
+            {/* MirrorChyan 更新设置 */}
+            {projectInterface?.mirrorchyan_rid && (
+              <section id="section-update" className="space-y-4 scroll-mt-4">
+                <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                  <Download className="w-4 h-4" />
+                  {t('mirrorChyan.title')}
+                </h2>
 
-              <div className="bg-bg-secondary rounded-xl p-4 border border-border space-y-5">
-                {/* 更新频道 */}
-                <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <Download className="w-5 h-5 text-accent" />
-                    <span className="font-medium text-text-primary">{t('mirrorChyan.channel')}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setMirrorChyanChannel('stable')}
-                      className={clsx(
-                        'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                        mirrorChyanSettings.channel === 'stable'
-                          ? 'bg-accent text-white'
-                          : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                      )}
-                    >
-                      {t('mirrorChyan.channelStable')}
-                    </button>
-                    <button
-                      onClick={() => setMirrorChyanChannel('beta')}
-                      className={clsx(
-                        'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                        mirrorChyanSettings.channel === 'beta'
-                          ? 'bg-accent text-white'
-                          : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                      )}
-                    >
-                      {t('mirrorChyan.channelBeta')}
-                    </button>
-                  </div>
-                </div>
-
-                {/* CDK 输入 */}
-                <div className="pt-4 border-t border-border">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Key className="w-5 h-5 text-accent" />
-                    <span className="font-medium text-text-primary">{t('mirrorChyan.cdk')}</span>
-                    <button
-                      onClick={() => openMirrorChyanWebsite('mxu_settings')}
-                      className="ml-auto text-xs text-accent hover:underline flex items-center gap-1"
-                    >
-                      {t('mirrorChyan.getCdk')}
-                      <ExternalLink className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showCdk ? 'text' : 'password'}
-                      value={mirrorChyanSettings.cdk}
-                      onChange={(e) => handleCdkChange(e.target.value)}
-                      placeholder={t('mirrorChyan.cdkPlaceholder')}
-                      className="w-full px-3 py-2.5 pr-10 rounded-lg bg-bg-tertiary border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
-                    />
-                    <button
-                      onClick={() => setShowCdk(!showCdk)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-text-secondary transition-colors"
-                    >
-                      {showCdk ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <div className="mt-3 text-xs text-text-muted leading-relaxed">
-                    <p>
-                      <button
-                        onClick={() => openMirrorChyanWebsite('mxu_settings_hint')}
-                        className="text-accent hover:underline"
-                      >
-                        {t('mirrorChyan.serviceName')}
-                      </button>
-                      {t('mirrorChyan.cdkHintAfterLink', { projectName })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 检查更新按钮 */}
-                <div className="pt-4 border-t border-border space-y-4">
-                  {/* 正在下载时隐藏检查更新按钮 */}
-                  {downloadStatus === 'downloading' ? (
-                    <div className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-bg-tertiary text-text-muted">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t('mirrorChyan.downloading')}
+                <div className="bg-bg-secondary rounded-xl p-4 border border-border space-y-5">
+                  {/* 更新频道 */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Download className="w-5 h-5 text-accent" />
+                      <span className="font-medium text-text-primary">
+                        {t('mirrorChyan.channel')}
+                      </span>
                     </div>
-                  ) : downloadStatus === 'completed' && installStatus === 'idle' ? (
-                    /* 下载完成等待安装，显示立即安装按钮 */
-                    <button
-                      onClick={handleInstallNow}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors"
-                    >
-                      <PackageCheck className="w-4 h-4" />
-                      {t('mirrorChyan.installNow')}
-                    </button>
-                  ) : (
-                    /* 默认检查更新按钮 */
-                    <button
-                      onClick={handleCheckUpdate}
-                      disabled={updateCheckLoading}
-                      className={clsx(
-                        'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                        updateCheckLoading
-                          ? 'bg-bg-tertiary text-text-muted cursor-not-allowed'
-                          : 'bg-accent text-white hover:bg-accent-hover'
-                      )}
-                    >
-                      {updateCheckLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          {t('mirrorChyan.checking')}
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="w-4 h-4" />
-                          {t('mirrorChyan.checkUpdate')}
-                        </>
-                      )}
-                    </button>
-                  )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setMirrorChyanChannel('stable')}
+                        className={clsx(
+                          'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                          mirrorChyanSettings.channel === 'stable'
+                            ? 'bg-accent text-white'
+                            : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                        )}
+                      >
+                        {t('mirrorChyan.channelStable')}
+                      </button>
+                      <button
+                        onClick={() => setMirrorChyanChannel('beta')}
+                        className={clsx(
+                          'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                          mirrorChyanSettings.channel === 'beta'
+                            ? 'bg-accent text-white'
+                            : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+                        )}
+                      >
+                        {t('mirrorChyan.channelBeta')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* CDK 输入 */}
+                  <div className="pt-4 border-t border-border">
+                    <div className="flex items-center gap-3 mb-3">
+                      <Key className="w-5 h-5 text-accent" />
+                      <span className="font-medium text-text-primary">{t('mirrorChyan.cdk')}</span>
+                      <button
+                        onClick={() => openMirrorChyanWebsite('mxu_settings')}
+                        className="ml-auto text-xs text-accent hover:underline flex items-center gap-1"
+                      >
+                        {t('mirrorChyan.getCdk')}
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showCdk ? 'text' : 'password'}
+                        value={mirrorChyanSettings.cdk}
+                        onChange={(e) => handleCdkChange(e.target.value)}
+                        placeholder={t('mirrorChyan.cdkPlaceholder')}
+                        className="w-full px-3 py-2.5 pr-10 rounded-lg bg-bg-tertiary border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
+                      />
+                      <button
+                        onClick={() => setShowCdk(!showCdk)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-text-secondary transition-colors"
+                      >
+                        {showCdk ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <div className="mt-3 text-xs text-text-muted leading-relaxed">
+                      <p>
+                        <button
+                          onClick={() => openMirrorChyanWebsite('mxu_settings_hint')}
+                          className="text-accent hover:underline"
+                        >
+                          {t('mirrorChyan.serviceName')}
+                        </button>
+                        {t('mirrorChyan.cdkHintAfterLink', { projectName })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 检查更新按钮 */}
+                  <div className="pt-4 border-t border-border space-y-4">
+                    {/* 正在下载时隐藏检查更新按钮 */}
+                    {downloadStatus === 'downloading' ? (
+                      <div className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-bg-tertiary text-text-muted">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {t('mirrorChyan.downloading')}
+                      </div>
+                    ) : downloadStatus === 'completed' && installStatus === 'idle' ? (
+                      /* 下载完成等待安装，显示立即安装按钮 */
+                      <button
+                        onClick={handleInstallNow}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors"
+                      >
+                        <PackageCheck className="w-4 h-4" />
+                        {t('mirrorChyan.installNow')}
+                      </button>
+                    ) : (
+                      /* 默认检查更新按钮 */
+                      <button
+                        onClick={handleCheckUpdate}
+                        disabled={updateCheckLoading}
+                        className={clsx(
+                          'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                          updateCheckLoading
+                            ? 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                            : 'bg-accent text-white hover:bg-accent-hover',
+                        )}
+                      >
+                        {updateCheckLoading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {t('mirrorChyan.checking')}
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4" />
+                            {t('mirrorChyan.checkUpdate')}
+                          </>
+                        )}
+                      </button>
+                    )}
 
                     {/* 更新状态显示 */}
                     {updateInfo && !updateInfo.hasUpdate && !updateInfo.errorCode && (
@@ -819,7 +846,9 @@ export function SettingsPage() {
                           <span className="text-sm font-medium text-text-primary">
                             {t('mirrorChyan.newVersion')}
                           </span>
-                          <span className="font-mono text-sm text-accent font-semibold">{updateInfo.versionName}</span>
+                          <span className="font-mono text-sm text-accent font-semibold">
+                            {updateInfo.versionName}
+                          </span>
                           {updateInfo.channel && updateInfo.channel !== 'stable' && (
                             <span className="px-1.5 py-0.5 bg-warning/20 text-warning text-xs rounded font-medium">
                               {updateInfo.channel}
@@ -840,74 +869,74 @@ export function SettingsPage() {
 
                         {/* API 错误提示 */}
                         {updateInfo.errorCode && errorText && (
-                          <div className={clsx(
-                            'flex items-start gap-2 p-2 rounded-lg text-xs',
-                            isCdkError
-                              ? 'bg-warning/10 text-warning'
-                              : 'bg-error/10 text-error'
-                          )}>
+                          <div
+                            className={clsx(
+                              'flex items-start gap-2 p-2 rounded-lg text-xs',
+                              isCdkError ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error',
+                            )}
+                          >
                             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                             <span>{errorText}</span>
                           </div>
                         )}
 
-                      {/* 没有下载链接的提示 */}
-                      {!updateInfo.downloadUrl && !updateInfo.errorCode && (
-                        <div className="flex items-center gap-2 text-xs text-text-muted">
-                          <AlertCircle className="w-3.5 h-3.5 text-warning" />
-                          <span>{t('mirrorChyan.noDownloadUrl')}</span>
-                        </div>
-                      )}
+                        {/* 没有下载链接的提示 */}
+                        {!updateInfo.downloadUrl && !updateInfo.errorCode && (
+                          <div className="flex items-center gap-2 text-xs text-text-muted">
+                            <AlertCircle className="w-3.5 h-3.5 text-warning" />
+                            <span>{t('mirrorChyan.noDownloadUrl')}</span>
+                          </div>
+                        )}
 
-                      {/* 下载进度 */}
-                      {updateInfo.downloadUrl && downloadStatus !== 'idle' && (
-                        <DownloadProgressBar
-                          downloadStatus={downloadStatus}
-                          downloadProgress={downloadProgress}
-                          fileSize={updateInfo.fileSize}
-                          downloadSource={updateInfo.downloadSource}
-                          onInstallClick={handleInstallNow}
-                          onRetryClick={() => {
-                            resetDownloadState();
-                            startDownload();
-                          }}
-                          progressBgClass="bg-bg-secondary"
-                        />
-                      )}
+                        {/* 下载进度 */}
+                        {updateInfo.downloadUrl && downloadStatus !== 'idle' && (
+                          <DownloadProgressBar
+                            downloadStatus={downloadStatus}
+                            downloadProgress={downloadProgress}
+                            fileSize={updateInfo.fileSize}
+                            downloadSource={updateInfo.downloadSource}
+                            onInstallClick={handleInstallNow}
+                            onRetryClick={() => {
+                              resetDownloadState();
+                              startDownload();
+                            }}
+                            progressBgClass="bg-bg-secondary"
+                          />
+                        )}
 
-                      {/* 等待下载 */}
-                      {updateInfo.downloadUrl && downloadStatus === 'idle' && (
-                        <div className="flex items-center gap-2 text-xs text-text-muted">
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>{t('mirrorChyan.preparingDownload')}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* 只有错误没有更新时显示错误 */}
-                  {updateInfo && !updateInfo.hasUpdate && updateInfo.errorCode && errorText && (
-                    <div className={clsx(
-                      'flex items-start gap-2 p-3 rounded-lg text-sm',
-                      isCdkError
-                        ? 'bg-warning/10 text-warning border border-warning/30'
-                        : 'bg-error/10 text-error border border-error/30'
-                    )}>
-                      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                      <div className="space-y-1">
-                        <p>{errorText}</p>
-                        {isCdkError && (
-                          <p className="text-xs opacity-80">
-                            {t('mirrorChyan.cdkHint')}
-                          </p>
+                        {/* 等待下载 */}
+                        {updateInfo.downloadUrl && downloadStatus === 'idle' && (
+                          <div className="flex items-center gap-2 text-xs text-text-muted">
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>{t('mirrorChyan.preparingDownload')}</span>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  )}
+                    )}
+
+                    {/* 只有错误没有更新时显示错误 */}
+                    {updateInfo && !updateInfo.hasUpdate && updateInfo.errorCode && errorText && (
+                      <div
+                        className={clsx(
+                          'flex items-start gap-2 p-3 rounded-lg text-sm',
+                          isCdkError
+                            ? 'bg-warning/10 text-warning border border-warning/30'
+                            : 'bg-error/10 text-error border border-error/30',
+                        )}
+                      >
+                        <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                        <div className="space-y-1">
+                          <p>{errorText}</p>
+                          {isCdkError && (
+                            <p className="text-xs opacity-80">{t('mirrorChyan.cdkHint')}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </section>
-          )}
+              </section>
+            )}
 
             {/* 调试 */}
             <section id="section-debug" className="space-y-4 scroll-mt-4">
@@ -920,161 +949,178 @@ export function SettingsPage() {
                 {/* 版本信息 */}
                 <div className="text-sm text-text-secondary space-y-1">
                   <p className="font-medium text-text-primary">{t('debug.versions')}</p>
-                  <p>{t('debug.interfaceVersion', { name: projectInterface?.name || 'interface' })}: <span className="font-mono text-text-primary">{version || '-'}</span></p>
-                  <p>{t('debug.maafwVersion')}: <span className="font-mono text-text-primary">{maafwVersion || t('maa.notInitialized')}</span></p>
-                  <p>{t('debug.mxuVersion')}: <span className="font-mono text-text-primary">{mxuVersion || '-'}</span></p>
+                  <p>
+                    {t('debug.interfaceVersion', { name: projectInterface?.name || 'interface' })}:{' '}
+                    <span className="font-mono text-text-primary">{version || '-'}</span>
+                  </p>
+                  <p>
+                    {t('debug.maafwVersion')}:{' '}
+                    <span className="font-mono text-text-primary">
+                      {maafwVersion || t('maa.notInitialized')}
+                    </span>
+                  </p>
+                  <p>
+                    {t('debug.mxuVersion')}:{' '}
+                    <span className="font-mono text-text-primary">{mxuVersion || '-'}</span>
+                  </p>
                 </div>
 
-              {/* 环境信息 */}
-              <div className="text-sm text-text-secondary space-y-1">
-                <p>{t('debug.environment')}: <span className="font-mono text-text-primary">{isTauri() ? t('debug.envTauri') : t('debug.envBrowser')}</span></p>
-              </div>
-
-              {/* 操作按钮 */}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={handleResetWindowSize}
-                  className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                  {t('debug.resetWindowSize')}
-                </button>
-                <button
-                  onClick={handleOpenConfigDir}
-                  className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  {t('debug.openConfigDir')}
-                </button>
-                <button
-                  onClick={handleOpenLogDir}
-                  className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
-                >
-                  <ScrollText className="w-4 h-4" />
-                  {t('debug.openLogDir')}
-                </button>
-                <button
-                  onClick={handleClearCache}
-                  className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
-                  title={cacheEntryCount !== null ? t('debug.cacheStats', { count: cacheEntryCount }) : undefined}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {t('debug.clearCache')}
-                  {cacheEntryCount !== null && cacheEntryCount > 0 && (
-                    <span className="text-xs text-text-muted">({cacheEntryCount})</span>
-                  )}
-                </button>
-              </div>
-
-              {/* 开发模式 */}
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <div className="flex items-center gap-3">
-                  <RefreshCw className="w-5 h-5 text-accent" />
-                  <div>
-                    <span className="font-medium text-text-primary">{t('debug.devMode')}</span>
-                    <p className="text-xs text-text-muted mt-0.5">{t('debug.devModeHint')}</p>
-                  </div>
+                {/* 环境信息 */}
+                <div className="text-sm text-text-secondary space-y-1">
+                  <p>
+                    {t('debug.environment')}:{' '}
+                    <span className="font-mono text-text-primary">
+                      {isTauri() ? t('debug.envTauri') : t('debug.envBrowser')}
+                    </span>
+                  </p>
                 </div>
-                <button
-                  onClick={() => setDevMode(!devMode)}
-                  className={clsx(
-                    'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
-                    devMode ? 'bg-accent' : 'bg-bg-active'
-                  )}
-                >
-                  <span
-                    className={clsx(
-                      'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
-                      devMode ? 'translate-x-5' : 'translate-x-0'
+
+                {/* 操作按钮 */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleResetWindowSize}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                    {t('debug.resetWindowSize')}
+                  </button>
+                  <button
+                    onClick={handleOpenConfigDir}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
+                  >
+                    <FolderOpen className="w-4 h-4" />
+                    {t('debug.openConfigDir')}
+                  </button>
+                  <button
+                    onClick={handleOpenLogDir}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
+                  >
+                    <ScrollText className="w-4 h-4" />
+                    {t('debug.openLogDir')}
+                  </button>
+                  <button
+                    onClick={handleClearCache}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors"
+                    title={
+                      cacheEntryCount !== null
+                        ? t('debug.cacheStats', { count: cacheEntryCount })
+                        : undefined
+                    }
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {t('debug.clearCache')}
+                    {cacheEntryCount !== null && cacheEntryCount > 0 && (
+                      <span className="text-xs text-text-muted">({cacheEntryCount})</span>
                     )}
-                  />
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* 关于 */}
-          <section id="section-about" className="space-y-4 scroll-mt-4">
-            <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
-              <Info className="w-4 h-4" />
-              {t('about.title')}
-            </h2>
-
-            <div className="bg-bg-secondary rounded-xl p-6 border border-border">
-              {/* Logo 和名称 */}
-              <div className="text-center mb-6">
-                {resolvedContent.iconPath ? (
-                  <img
-                    src={resolvedContent.iconPath}
-                    alt={projectName}
-                    className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg object-contain"
-                    onError={(e) => {
-                      // 图标加载失败时显示默认图标
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                    }}
-                  />
-                ) : null}
-                <div className={clsx(
-                  "w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center shadow-lg",
-                  resolvedContent.iconPath && "hidden"
-                )}>
-                  <span className="text-3xl font-bold text-white">
-                    {projectName.charAt(0).toUpperCase()}
-                  </span>
+                  </button>
                 </div>
-                <h3 className="text-xl font-bold text-text-primary">{projectName}</h3>
-                <p className="text-sm text-text-secondary mt-1">
-                  {t('about.version')}: {version}
-                </p>
-              </div>
 
-              {/* 内容加载中 */}
-              {isLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-accent" />
-                </div>
-              ) : (
-                <>
-                  {/* 描述 */}
-                  {resolvedContent.description && (
-                    <div className="mb-6 text-center">
-                      {renderMarkdown(resolvedContent.description)}
+                {/* 开发模式 */}
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className="w-5 h-5 text-accent" />
+                    <div>
+                      <span className="font-medium text-text-primary">{t('debug.devMode')}</span>
+                      <p className="text-xs text-text-muted mt-0.5">{t('debug.devModeHint')}</p>
                     </div>
-                  )}
+                  </div>
+                  <button
+                    onClick={() => setDevMode(!devMode)}
+                    className={clsx(
+                      'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
+                      devMode ? 'bg-accent' : 'bg-bg-active',
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        devMode ? 'translate-x-5' : 'translate-x-0',
+                      )}
+                    />
+                  </button>
+                </div>
+              </div>
+            </section>
 
-                  {/* 信息列表 */}
-                  <div className="space-y-2">
-                    {/* 联系方式 */}
-                    {resolvedContent.contact && (
-                      <div className="px-4 py-3 rounded-lg bg-bg-tertiary">
-                        <div className="flex items-center gap-3 mb-2">
-                          <Mail className="w-5 h-5 text-text-muted flex-shrink-0" />
-                          <span className="text-sm font-medium text-text-primary">
-                            {t('about.contact')}
-                          </span>
-                        </div>
-                        <div className="ml-8">
-                          {renderMarkdown(resolvedContent.contact)}
-                        </div>
+            {/* 关于 */}
+            <section id="section-about" className="space-y-4 scroll-mt-4">
+              <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                {t('about.title')}
+              </h2>
+
+              <div className="bg-bg-secondary rounded-xl p-6 border border-border">
+                {/* Logo 和名称 */}
+                <div className="text-center mb-6">
+                  {resolvedContent.iconPath ? (
+                    <img
+                      src={resolvedContent.iconPath}
+                      alt={projectName}
+                      className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg object-contain"
+                      onError={(e) => {
+                        // 图标加载失败时显示默认图标
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className={clsx(
+                      'w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center shadow-lg',
+                      resolvedContent.iconPath && 'hidden',
+                    )}
+                  >
+                    <span className="text-3xl font-bold text-white">
+                      {projectName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary">{projectName}</h3>
+                  <p className="text-sm text-text-secondary mt-1">
+                    {t('about.version')}: {version}
+                  </p>
+                </div>
+
+                {/* 内容加载中 */}
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                  </div>
+                ) : (
+                  <>
+                    {/* 描述 */}
+                    {resolvedContent.description && (
+                      <div className="mb-6 text-center">
+                        {renderMarkdown(resolvedContent.description)}
                       </div>
                     )}
 
+                    {/* 信息列表 */}
+                    <div className="space-y-2">
+                      {/* 联系方式 */}
+                      {resolvedContent.contact && (
+                        <div className="px-4 py-3 rounded-lg bg-bg-tertiary">
+                          <div className="flex items-center gap-3 mb-2">
+                            <Mail className="w-5 h-5 text-text-muted flex-shrink-0" />
+                            <span className="text-sm font-medium text-text-primary">
+                              {t('about.contact')}
+                            </span>
+                          </div>
+                          <div className="ml-8">{renderMarkdown(resolvedContent.contact)}</div>
+                        </div>
+                      )}
 
-                    {/* 许可证 */}
-                    {resolvedContent.license && (
-                      <div className="px-4 py-3 rounded-lg bg-bg-tertiary">
-                        <div className="flex items-center gap-3 mb-2">
-                          <FileText className="w-5 h-5 text-text-muted flex-shrink-0" />
-                          <span className="text-sm font-medium text-text-primary">
-                            {t('about.license')}
-                          </span>
+                      {/* 许可证 */}
+                      {resolvedContent.license && (
+                        <div className="px-4 py-3 rounded-lg bg-bg-tertiary">
+                          <div className="flex items-center gap-3 mb-2">
+                            <FileText className="w-5 h-5 text-text-muted flex-shrink-0" />
+                            <span className="text-sm font-medium text-text-primary">
+                              {t('about.license')}
+                            </span>
+                          </div>
+                          <div className="ml-8">{renderMarkdown(resolvedContent.license)}</div>
                         </div>
-                        <div className="ml-8">
-                          {renderMarkdown(resolvedContent.license)}
-                        </div>
-                      </div>
-                    )}
+                      )}
 
                       {/* GitHub */}
                       {/* {github && (
@@ -1088,26 +1134,35 @@ export function SettingsPage() {
                         <span className="text-sm text-accent truncate">{github}</span>
                       </a>
                     )} */}
-
                     </div>
                   </>
                 )}
 
-              {/* 底部信息 */}
-              <div className="text-center pt-4 mt-4 border-t border-border">
-                <p className="text-xs text-text-muted">
-                  Powered by{' '}
-                  <a href="https://maafw.xyz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                    MaaFramework
-                  </a>
-                  {' & '}
-                  <a href="https://github.com/MistEO/MXU" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                    MXU
-                  </a>
-                </p>
+                {/* 底部信息 */}
+                <div className="text-center pt-4 mt-4 border-t border-border">
+                  <p className="text-xs text-text-muted">
+                    Powered by{' '}
+                    <a
+                      href="https://maafw.xyz"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      MaaFramework
+                    </a>
+                    {' & '}
+                    <a
+                      href="https://github.com/MistEO/MXU"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      MXU
+                    </a>
+                  </p>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
           </div>
         </div>
       </div>

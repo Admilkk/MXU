@@ -33,7 +33,7 @@ export function isUrl(content: string): boolean {
 /**
  * 判断内容是否可能为文件路径
  * 根据 ProjectInterface V2 协议：支持文件路径、URL 或直接文本
- * 
+ *
  * 文件路径特征：
  * 1. 以 ./ 或 ../ 开头
  * 2. 包含常见文档扩展名（.md, .txt, .html 等）
@@ -41,31 +41,32 @@ export function isUrl(content: string): boolean {
  */
 export function isFilePath(content: string): boolean {
   if (isUrl(content)) return false;
-  
+
   // 以 ./ 或 ../ 开头，明确是相对路径
   if (content.startsWith('./') || content.startsWith('../')) return true;
-  
+
   // 包含常见文档扩展名
   if (/\.(md|txt|json|html|htm)$/i.test(content)) return true;
-  
+
   // 简单文件名检测：
   // - 不包含空格、换行、HTML 标签
   // - 不是纯数字
   // - 长度合理（1-100 字符）
   // - 全大写或包含常见路径分隔符
-  const isSimpleName = /^[A-Za-z0-9_\-./\\]+$/.test(content) &&
+  const isSimpleName =
+    /^[A-Za-z0-9_\-./\\]+$/.test(content) &&
     content.length >= 1 &&
     content.length <= 100 &&
     !/^\d+$/.test(content) &&
     !content.includes('<') &&
     !content.includes('>');
-  
+
   // 全大写的简单名称很可能是文件名（如 LICENSE, CONTACT, README）
   if (isSimpleName && /^[A-Z][A-Z0-9_\-]*$/.test(content)) return true;
-  
+
   // 包含路径分隔符的简单名称也可能是文件路径
   if (isSimpleName && (content.includes('/') || content.includes('\\'))) return true;
-  
+
   return false;
 }
 
@@ -94,7 +95,7 @@ function normalizeFilePath(filePath: string): string {
  */
 async function loadFromFile(filePath: string, basePath: string): Promise<string> {
   const normalizedPath = normalizeFilePath(filePath);
-  
+
   if (isTauri()) {
     // Tauri 环境：使用 Rust 命令读取 exe 同目录的文件
     return await invoke<string>('read_local_file', { filename: normalizedPath });
@@ -207,11 +208,11 @@ export interface ResolvedContent {
  */
 export function resolveI18nText(
   text: string | undefined,
-  translations?: Record<string, string>
+  translations?: Record<string, string>,
 ): string {
   if (!text) return '';
   if (!text.startsWith('$')) return text;
-  
+
   const key = text.slice(1);
   return translations?.[key] || key;
 }
@@ -222,13 +223,13 @@ export function resolveI18nText(
  */
 export function resolveContentSync(
   content: string | undefined,
-  options: ResolveOptions = {}
+  options: ResolveOptions = {},
 ): string {
   if (!content) return '';
-  
+
   // 先处理国际化
   const resolved = resolveI18nText(content, options.translations);
-  
+
   return resolved;
 }
 
@@ -238,17 +239,17 @@ export function resolveContentSync(
  */
 export async function resolveContent(
   content: string | undefined,
-  options: ResolveOptions = {}
+  options: ResolveOptions = {},
 ): Promise<string> {
   if (!content) return '';
-  
+
   const { translations, basePath = '.', loadExternal = true } = options;
-  
+
   // 先处理国际化
   let resolved = resolveI18nText(content, translations);
-  
+
   if (!loadExternal) return resolved;
-  
+
   try {
     // 检查是否为 URL
     if (isUrl(resolved)) {
@@ -262,7 +263,7 @@ export async function resolveContent(
     log.warn(`加载内容失败 [${resolved}]:`, err);
     // 加载失败时返回原始文本
   }
-  
+
   return resolved;
 }
 
@@ -272,43 +273,43 @@ export async function resolveContent(
  * - 文件路径（相对于 interface.json 所在目录）
  * - URL（http:// 或 https://）
  * - 直接文本
- * 
+ *
  * @param content 原始内容
  * @param options 解析选项
  * @returns 解析结果，包含内容、类型和加载状态
  */
 export async function resolveDescriptionContent(
   content: string | undefined,
-  options: ResolveOptions = {}
+  options: ResolveOptions = {},
 ): Promise<ResolvedContent> {
   if (!content) {
     return { content: '', type: 'text', loaded: false };
   }
-  
+
   const { translations, basePath = '' } = options;
-  
+
   // 先处理国际化
   const resolved = resolveI18nText(content, translations);
-  
+
   // 检测内容类型
   const type = detectContentType(resolved);
-  
+
   // 如果是直接文本，直接返回
   if (type === 'text') {
     return { content: resolved, type, loaded: false };
   }
-  
+
   // 尝试加载外部内容
   try {
     let loadedContent: string;
-    
+
     if (type === 'url') {
       loadedContent = await loadFromUrl(resolved, basePath);
     } else {
       // 文件路径：相对于 interface.json 所在目录
       loadedContent = await loadFromFile(resolved, basePath);
     }
-    
+
     return { content: loadedContent, type, loaded: true };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
@@ -325,28 +326,28 @@ export async function resolveDescriptionContent(
 export function resolveIconPath(
   iconPath: string | undefined,
   basePath: string,
-  translations?: Record<string, string>
+  translations?: Record<string, string>,
 ): string | undefined {
   if (!iconPath) return undefined;
-  
+
   // 先处理国际化
   let resolved = resolveI18nText(iconPath, translations);
-  
+
   if (!resolved) return undefined;
-  
+
   // 如果是 URL 直接返回
   if (isUrl(resolved)) return resolved;
-  
+
   // 规范化路径
   resolved = normalizeFilePath(resolved);
-  
+
   // 浏览器环境：构建 HTTP 路径
   if (!isTauri()) {
     if (!resolved.startsWith('/')) {
       resolved = basePath ? `${basePath}/${resolved}` : `/${resolved}`;
     }
   }
-  
+
   return resolved;
 }
 
@@ -361,7 +362,7 @@ function joinPath(basePath: string, relativePath: string): string {
 /**
  * 加载图标为 data URL（异步版本）
  * 在 Tauri 环境下读取本地文件并转换为 base64 data URL
- * 
+ *
  * @param iconPath 图标路径（相对于 interface.json 所在目录）
  * @param basePath interface.json 所在目录
  * @param translations 翻译表
@@ -369,22 +370,22 @@ function joinPath(basePath: string, relativePath: string): string {
 export async function loadIconAsDataUrl(
   iconPath: string | undefined,
   basePath: string = '',
-  translations?: Record<string, string>
+  translations?: Record<string, string>,
 ): Promise<string | undefined> {
   if (!iconPath) return undefined;
-  
+
   // 先处理国际化
   let resolved = resolveI18nText(iconPath, translations);
-  
+
   if (!resolved) return undefined;
-  
+
   // 如果是 URL 直接返回
   if (isUrl(resolved)) return resolved;
-  
+
   // 规范化路径并拼接 basePath
   resolved = normalizeFilePath(resolved);
   const fullPath = joinPath(basePath, resolved);
-  
+
   try {
     if (isTauri()) {
       // Tauri 环境：读取文件并转换为 base64 data URL
@@ -407,14 +408,14 @@ export async function loadIconAsDataUrl(
  */
 function getMimeType(ext: string): string {
   const mimeTypes: Record<string, string> = {
-    'png': 'image/png',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'gif': 'image/gif',
-    'webp': 'image/webp',
-    'svg': 'image/svg+xml',
-    'ico': 'image/x-icon',
-    'bmp': 'image/bmp',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    svg: 'image/svg+xml',
+    ico: 'image/x-icon',
+    bmp: 'image/bmp',
   };
   return mimeTypes[ext] || 'application/octet-stream';
 }
@@ -448,10 +449,7 @@ marked.use({
     },
 
     code({ text, lang }) {
-      const escapedCode = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
+      const escapedCode = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       const langClass = lang ? ` language-${lang}` : '';
       return `<pre class="bg-bg-tertiary rounded p-2 my-2 overflow-x-auto text-sm"><code class="${langClass}">${escapedCode}</code></pre>`;
     },
@@ -461,7 +459,7 @@ marked.use({
     },
 
     list(token) {
-      const body = token.items.map(item => this.listitem(item)).join('');
+      const body = token.items.map((item) => this.listitem(item)).join('');
       const tag = token.ordered ? 'ol' : 'ul';
       const listClass = token.ordered ? 'list-decimal' : 'list-disc';
       return `<${tag} class="${listClass} list-inside my-1">${body}</${tag}>`;
@@ -486,17 +484,19 @@ marked.use({
     },
 
     table(token) {
-      const headerCells = token.header.map((cell, i) => 
-        this.tablecell({ ...cell, align: token.align[i] })
-      ).join('');
+      const headerCells = token.header
+        .map((cell, i) => this.tablecell({ ...cell, align: token.align[i] }))
+        .join('');
       const header = `<tr class="border-b border-border">${headerCells}</tr>`;
 
-      const bodyRows = token.rows.map(row => {
-        const cells = row.map((cell, i) => 
-          this.tablecell({ ...cell, align: token.align[i] })
-        ).join('');
-        return `<tr class="border-b border-border">${cells}</tr>`;
-      }).join('');
+      const bodyRows = token.rows
+        .map((row) => {
+          const cells = row
+            .map((cell, i) => this.tablecell({ ...cell, align: token.align[i] }))
+            .join('');
+          return `<tr class="border-b border-border">${cells}</tr>`;
+        })
+        .join('');
 
       return `<table class="w-full my-2 border-collapse"><thead>${header}</thead><tbody>${bodyRows}</tbody></table>`;
     },
@@ -547,23 +547,23 @@ export function markdownToHtml(markdown: string): string {
  */
 export async function markdownToHtmlWithLocalImages(
   markdown: string,
-  basePath: string = ''
+  basePath: string = '',
 ): Promise<string> {
   // 先转换为 HTML
   let html = markdownToHtml(markdown);
-  
+
   // 匹配 HTML 中的 img 标签的 src 属性
   const imgRegex = /<img[^>]+src="([^"]+)"[^>]*>/g;
   const matches = [...html.matchAll(imgRegex)];
-  
+
   // 收集需要转换的相对路径图片
   const imagePromises: Promise<{ original: string; dataUrl: string | null }>[] = [];
-  
+
   for (const match of matches) {
     const src = match[1];
     // 跳过已经是 data URL 或 http(s) URL 的图片
     if (src.startsWith('data:') || isUrl(src)) continue;
-    
+
     imagePromises.push(
       (async () => {
         try {
@@ -572,13 +572,13 @@ export async function markdownToHtmlWithLocalImages(
         } catch {
           return { original: src, dataUrl: null };
         }
-      })()
+      })(),
     );
   }
-  
+
   // 等待所有图片加载完成
   const results = await Promise.all(imagePromises);
-  
+
   // 替换图片路径为 data URL
   for (const { original, dataUrl } of results) {
     if (dataUrl) {
@@ -587,7 +587,7 @@ export async function markdownToHtmlWithLocalImages(
       html = html.replace(new RegExp(`src="${escapedSrc}"`, 'g'), `src="${dataUrl}"`);
     }
   }
-  
+
   return html;
 }
 
@@ -620,7 +620,7 @@ export interface UseResolvedContentResult {
 
 /**
  * React Hook: 解析 description 等支持文件/URL 的字段
- * 
+ *
  * @param content 原始内容（可能是文件路径、URL 或直接文本）
  * @param basePath 资源基础路径（相对路径基于此目录）
  * @param translations 翻译表（用于国际化文本）
@@ -628,7 +628,7 @@ export interface UseResolvedContentResult {
 export function useResolvedContent(
   content: string | undefined,
   basePath: string = '',
-  translations?: Record<string, string>
+  translations?: Record<string, string>,
 ): UseResolvedContentResult {
   const [result, setResult] = useState<UseResolvedContentResult>({
     content: '',
@@ -637,27 +637,27 @@ export function useResolvedContent(
     type: 'text',
     loaded: false,
   });
-  
+
   useEffect(() => {
     if (!content) {
       setResult({ content: '', html: '', loading: false, type: 'text', loaded: false });
       return;
     }
-    
+
     // 先处理国际化
     const resolvedI18n = resolveI18nText(content, translations);
     const type = detectContentType(resolvedI18n);
-    
+
     // 统一使用异步处理，以支持直接文本中的本地图片
-    setResult(prev => ({ ...prev, loading: true, type }));
-    
+    setResult((prev) => ({ ...prev, loading: true, type }));
+
     let cancelled = false;
-    
+
     (async () => {
       let finalContent = resolvedI18n;
       let loaded = false;
       let error: string | undefined;
-      
+
       // 如果是文件或 URL 类型，需要先加载内容
       if (type !== 'text') {
         const resolved = await resolveDescriptionContent(content, { translations, basePath });
@@ -665,14 +665,14 @@ export function useResolvedContent(
         loaded = resolved.loaded;
         error = resolved.error;
       }
-      
+
       if (cancelled) return;
-      
+
       // 异步加载本地图片的 HTML（统一处理，支持直接文本中的 Markdown 图片）
       const html = await markdownToHtmlWithLocalImages(finalContent, basePath);
-      
+
       if (cancelled) return;
-      
+
       setResult({
         content: finalContent,
         html,
@@ -682,12 +682,12 @@ export function useResolvedContent(
         error,
       });
     })();
-    
+
     return () => {
       cancelled = true;
     };
   }, [content, basePath, translations]);
-  
+
   return result;
 }
 
@@ -698,7 +698,7 @@ export function useResolvedContent(
 export function useDescriptionHtml(
   description: string | undefined,
   basePath: string = '',
-  translations?: Record<string, string>
+  translations?: Record<string, string>,
 ): { html: string; loading: boolean; error?: string } {
   const result = useResolvedContent(description, basePath, translations);
   return { html: result.html, loading: result.loading, error: result.error };

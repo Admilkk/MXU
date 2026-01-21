@@ -8,7 +8,15 @@ import { Info, AlertCircle, Loader2, FileText, Link } from 'lucide-react';
 import { getInterfaceLangKey } from '@/i18n';
 
 /** 异步加载图标组件 */
-function AsyncIcon({ icon, basePath, className }: { icon?: string; basePath: string; className?: string }) {
+function AsyncIcon({
+  icon,
+  basePath,
+  className,
+}: {
+  icon?: string;
+  basePath: string;
+  className?: string;
+}) {
   const [iconUrl, setIconUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -53,20 +61,20 @@ function OptionLabel({
 }
 
 /** 显示选项描述文本（支持文件/URL/直接文本，以及 Markdown/HTML 和本地图片） */
-function OptionDescription({ 
-  description, 
+function OptionDescription({
+  description,
   basePath,
   translations,
-}: { 
-  description?: string; 
+}: {
+  description?: string;
   basePath: string;
   translations?: Record<string, string>;
 }) {
   const { t } = useTranslation();
   const resolved = useResolvedContent(description, basePath, translations);
-  
+
   if (!description && !resolved.loading) return null;
-  
+
   if (resolved.loading) {
     return (
       <div className="flex items-center gap-1.5 text-xs text-text-muted">
@@ -75,7 +83,7 @@ function OptionDescription({
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-1">
       {/* 来源提示 */}
@@ -86,19 +94,27 @@ function OptionDescription({
           ) : (
             <Link className="w-3 h-3" />
           )}
-          <span>{t(resolved.type === 'file' ? 'optionEditor.loadedFromFile' : 'optionEditor.loadedFromUrl')}</span>
+          <span>
+            {t(
+              resolved.type === 'file'
+                ? 'optionEditor.loadedFromFile'
+                : 'optionEditor.loadedFromUrl',
+            )}
+          </span>
         </div>
       )}
       {/* 加载错误提示 */}
       {resolved.error && resolved.type !== 'text' && (
         <div className="flex items-center gap-1 text-[10px] text-warning">
           <AlertCircle className="w-3 h-3" />
-          <span>{t('optionEditor.loadDescriptionFailed')}: {resolved.error}</span>
+          <span>
+            {t('optionEditor.loadDescriptionFailed')}: {resolved.error}
+          </span>
         </div>
       )}
       {/* 内容 */}
       {resolved.html && (
-        <div 
+        <div
           className="text-xs text-text-muted [&_p]:my-0.5 [&_a]:text-accent [&_a]:hover:underline"
           dangerouslySetInnerHTML={{ __html: resolved.html }}
         />
@@ -148,7 +164,11 @@ function InputField({
     <div className="space-y-1">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 min-w-[80px]">
-          <AsyncIcon icon={input.icon} basePath={basePath} className="w-4 h-4 object-contain flex-shrink-0" />
+          <AsyncIcon
+            icon={input.icon}
+            basePath={basePath}
+            className="w-4 h-4 object-contain flex-shrink-0"
+          />
           <span className="text-sm text-text-tertiary">{inputLabel}</span>
           {inputDescription && (
             <div className="relative">
@@ -178,7 +198,7 @@ function InputField({
             disabled && 'opacity-60 cursor-not-allowed',
             validationError
               ? 'border-error focus:border-error focus:ring-error/20'
-              : 'border-border focus:border-accent focus:ring-accent/20'
+              : 'border-border focus:border-accent focus:ring-accent/20',
           )}
         />
       </div>
@@ -192,8 +212,22 @@ function InputField({
   );
 }
 
-export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, disabled = false }: OptionEditorProps) {
-  const { projectInterface, setTaskOptionValue, resolveI18nText, language, basePath, interfaceTranslations } = useAppStore();
+export function OptionEditor({
+  instanceId,
+  taskId,
+  optionKey,
+  value,
+  depth = 0,
+  disabled = false,
+}: OptionEditorProps) {
+  const {
+    projectInterface,
+    setTaskOptionValue,
+    resolveI18nText,
+    language,
+    basePath,
+    interfaceTranslations,
+  } = useAppStore();
 
   const optionDef = projectInterface?.option?.[optionKey];
   if (!optionDef) return null;
@@ -216,7 +250,10 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
       });
     }
     if (optionDef.type === 'select' || !optionDef.type) {
-      const caseName = value?.type === 'select' ? value.caseName : optionDef.default_case || optionDef.cases?.[0]?.name;
+      const caseName =
+        value?.type === 'select'
+          ? value.caseName
+          : optionDef.default_case || optionDef.cases?.[0]?.name;
       return optionDef.cases?.find((c) => c.name === caseName);
     }
     return undefined;
@@ -232,11 +269,7 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
     return (
       <div className={clsx('space-y-2', depth > 0 && 'ml-4 pl-3 border-l-2 border-border')}>
         <div className="flex items-center justify-between">
-          <OptionLabel
-            label={optionLabel}
-            icon={optionDef.icon}
-            basePath={basePath}
-          />
+          <OptionLabel label={optionLabel} icon={optionDef.icon} basePath={basePath} />
           <button
             onClick={() => {
               if (disabled) return;
@@ -249,18 +282,22 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
             className={clsx(
               'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
               isChecked ? 'bg-accent' : 'bg-bg-active',
-              disabled && 'opacity-60 cursor-not-allowed'
+              disabled && 'opacity-60 cursor-not-allowed',
             )}
           >
             <span
               className={clsx(
                 'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
-                isChecked ? 'translate-x-5' : 'translate-x-0'
+                isChecked ? 'translate-x-5' : 'translate-x-0',
               )}
             />
           </button>
         </div>
-        <OptionDescription description={optionDescription} basePath={basePath} translations={translations} />
+        <OptionDescription
+          description={optionDescription}
+          basePath={basePath}
+          translations={translations}
+        />
         {/* 渲染嵌套选项 */}
         {nestedOptionKeys.length > 0 && (
           <div className="space-y-2">
@@ -270,10 +307,12 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
                 instanceId={instanceId}
                 taskId={taskId}
                 optionKey={nestedKey}
-                value={useAppStore.getState().instances
-                  .find(i => i.id === instanceId)
-                  ?.selectedTasks.find(t => t.id === taskId)
-                  ?.optionValues[nestedKey]}
+                value={
+                  useAppStore
+                    .getState()
+                    .instances.find((i) => i.id === instanceId)
+                    ?.selectedTasks.find((t) => t.id === taskId)?.optionValues[nestedKey]
+                }
                 depth={depth + 1}
                 disabled={disabled}
               />
@@ -290,12 +329,12 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
 
     return (
       <div className={clsx('space-y-2', depth > 0 && 'ml-4 pl-3 border-l-2 border-border')}>
-        <OptionLabel
-          label={optionLabel}
-          icon={optionDef.icon}
+        <OptionLabel label={optionLabel} icon={optionDef.icon} basePath={basePath} />
+        <OptionDescription
+          description={optionDescription}
           basePath={basePath}
+          translations={translations}
         />
-        <OptionDescription description={optionDescription} basePath={basePath} translations={translations} />
         {optionDef.inputs.map((input) => {
           const inputValue = inputValues[input.name] ?? input.default ?? '';
 
@@ -323,16 +362,13 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
   }
 
   // Select 类型 (默认)
-  const selectedCaseName = value?.type === 'select' ? value.caseName : optionDef.default_case || optionDef.cases[0]?.name;
+  const selectedCaseName =
+    value?.type === 'select' ? value.caseName : optionDef.default_case || optionDef.cases[0]?.name;
 
   return (
     <div className={clsx('space-y-2', depth > 0 && 'ml-4 pl-3 border-l-2 border-border')}>
       <div className="flex items-center gap-3">
-        <OptionLabel
-          label={optionLabel}
-          icon={optionDef.icon}
-          basePath={basePath}
-        />
+        <OptionLabel label={optionLabel} icon={optionDef.icon} basePath={basePath} />
         <select
           value={selectedCaseName}
           onChange={(e) => {
@@ -347,7 +383,7 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
             'flex-1 px-3 py-1.5 text-sm rounded-md border border-border',
             'bg-bg-secondary text-text-primary',
             'focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20',
-            disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+            disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
           )}
         >
           {optionDef.cases.map((caseItem) => {
@@ -360,7 +396,11 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
           })}
         </select>
       </div>
-      <OptionDescription description={optionDescription} basePath={basePath} translations={translations} />
+      <OptionDescription
+        description={optionDescription}
+        basePath={basePath}
+        translations={translations}
+      />
       {/* 渲染嵌套选项 */}
       {nestedOptionKeys.length > 0 && (
         <div className="space-y-2">
@@ -370,10 +410,12 @@ export function OptionEditor({ instanceId, taskId, optionKey, value, depth = 0, 
               instanceId={instanceId}
               taskId={taskId}
               optionKey={nestedKey}
-              value={useAppStore.getState().instances
-                .find(i => i.id === instanceId)
-                ?.selectedTasks.find(t => t.id === taskId)
-                ?.optionValues[nestedKey]}
+              value={
+                useAppStore
+                  .getState()
+                  .instances.find((i) => i.id === instanceId)
+                  ?.selectedTasks.find((t) => t.id === taskId)?.optionValues[nestedKey]
+              }
               depth={depth + 1}
               disabled={disabled}
             />

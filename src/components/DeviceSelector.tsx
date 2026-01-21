@@ -30,7 +30,11 @@ interface DeviceSelectorProps {
   onConnectionChange?: (connected: boolean) => void;
 }
 
-export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }: DeviceSelectorProps) {
+export function DeviceSelector({
+  instanceId,
+  controllerDef,
+  onConnectionChange,
+}: DeviceSelectorProps) {
   const { t } = useTranslation();
   const { basePath } = useAppStore();
 
@@ -40,10 +44,10 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
   const [error, setError] = useState<string | null>(null);
 
   // 从全局 store 获取缓存的设备列表和 ID 映射
-  const { 
-    cachedAdbDevices, 
-    cachedWin32Windows, 
-    setCachedAdbDevices, 
+  const {
+    cachedAdbDevices,
+    cachedWin32Windows,
+    setCachedAdbDevices,
     setCachedWin32Windows,
     registerCtrlIdName,
   } = useAppStore();
@@ -53,15 +57,19 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
   const [selectedWindow, setSelectedWindow] = useState<Win32Window | null>(null);
 
   const [showDropdown, setShowDropdown] = useState(false);
-  
+
   // 等待中的操作 ID（用于回调匹配）
   const [pendingCtrlId, setPendingCtrlId] = useState<number | null>(null);
-  
+
   // 下拉框触发按钮和菜单的 ref
   const dropdownRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  
+  const [dropdownPos, setDropdownPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
   // 计算下拉框位置
   const calcDropdownPosition = useCallback(() => {
     if (!dropdownRef.current) return null;
@@ -72,11 +80,11 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
       width: rect.width,
     };
   }, []);
-  
+
   // 点击外部关闭下拉框
   useEffect(() => {
     if (!showDropdown) return;
-    
+
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       const inButton = dropdownRef.current?.contains(target);
@@ -85,7 +93,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
         setShowDropdown(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showDropdown]);
@@ -94,40 +102,43 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
 
   // PlayCover 地址输入
   const [playcoverAddress, setPlaycoverAddress] = useState('127.0.0.1:1717');
-  
+
   // 监听 MaaFramework 回调事件，处理连接完成
   useEffect(() => {
     if (pendingCtrlId === null) return;
-    
+
     let unlisten: (() => void) | null = null;
-    
-    maaService.onCallback((message, details) => {
-      if (details.ctrl_id !== pendingCtrlId) return;
-      
-      if (message === 'Controller.Action.Succeeded') {
-        setIsConnected(true);
-        onConnectionChange?.(true);
-        setIsConnecting(false);
-        setPendingCtrlId(null);
-      } else if (message === 'Controller.Action.Failed') {
-        log.error('连接失败');
-        setError('连接失败');
-        setIsConnected(false);
-        onConnectionChange?.(false);
-        setIsConnecting(false);
-        setPendingCtrlId(null);
-      }
-    }).then(fn => {
-      unlisten = fn;
-    });
-    
+
+    maaService
+      .onCallback((message, details) => {
+        if (details.ctrl_id !== pendingCtrlId) return;
+
+        if (message === 'Controller.Action.Succeeded') {
+          setIsConnected(true);
+          onConnectionChange?.(true);
+          setIsConnecting(false);
+          setPendingCtrlId(null);
+        } else if (message === 'Controller.Action.Failed') {
+          log.error('连接失败');
+          setError('连接失败');
+          setIsConnected(false);
+          onConnectionChange?.(false);
+          setIsConnecting(false);
+          setPendingCtrlId(null);
+        }
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+
     return () => {
       if (unlisten) unlisten();
     };
   }, [pendingCtrlId, onConnectionChange]);
 
   // 判断是否需要搜索设备（PlayCover 不需要搜索）
-  const needsDeviceSearch = controllerType === 'Adb' || controllerType === 'Win32' || controllerType === 'Gamepad';
+  const needsDeviceSearch =
+    controllerType === 'Adb' || controllerType === 'Win32' || controllerType === 'Gamepad';
 
   // 初始化 MaaFramework（如果还没初始化）
   const ensureMaaInitialized = async () => {
@@ -150,9 +161,11 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
       // 确保 MaaFramework 已初始化
       const initialized = await ensureMaaInitialized();
       if (!initialized) {
-        throw new Error('无法初始化 MaaFramework，请确保 MaaFramework 和 MaaToolkit 动态库在正确的位置');
+        throw new Error(
+          '无法初始化 MaaFramework，请确保 MaaFramework 和 MaaToolkit 动态库在正确的位置',
+        );
       }
-      
+
       if (controllerType === 'Adb') {
         const devices = await maaService.findAdbDevices();
         setCachedAdbDevices(devices);
@@ -164,7 +177,8 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
         }
       } else if (controllerType === 'Win32' || controllerType === 'Gamepad') {
         const classRegex = controllerDef.win32?.class_regex || controllerDef.gamepad?.class_regex;
-        const windowRegex = controllerDef.win32?.window_regex || controllerDef.gamepad?.window_regex;
+        const windowRegex =
+          controllerDef.win32?.window_regex || controllerDef.gamepad?.window_regex;
         const windows = await maaService.findWin32Windows(classRegex, windowRegex);
         setCachedWin32Windows(windows);
         if (windows.length === 1) {
@@ -232,7 +246,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
 
       const agentPath = `${basePath}/MaaAgentBinary`;
       const ctrlId = await maaService.connectController(instanceId, config, agentPath);
-      
+
       // 注册 ctrl_id 与设备名的映射
       let deviceName = '';
       if (controllerType === 'Adb' && selectedAdbDevice) {
@@ -245,7 +259,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
       if (deviceName) {
         registerCtrlIdName(ctrlId, deviceName);
       }
-      
+
       // 记录等待中的 ctrl_id，后续由回调处理完成状态
       setPendingCtrlId(ctrlId);
     } catch (err) {
@@ -284,19 +298,19 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
   const handleSelectAdbDevice = async (device: AdbDevice) => {
     setSelectedAdbDevice(device);
     setShowDropdown(false);
-    
+
     // 自动连接
     setIsConnecting(true);
     setError(null);
-    
+
     try {
       const initialized = await ensureMaaInitialized();
       if (!initialized) {
         throw new Error('无法初始化 MaaFramework，请确保 MaaFramework 动态库在正确的位置');
       }
-      
+
       await maaService.createInstance(instanceId).catch(() => {});
-      
+
       const config: ControllerConfig = {
         type: 'Adb',
         adb_path: device.adb_path,
@@ -305,13 +319,13 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
         input_methods: device.input_methods,
         config: device.config,
       };
-      
+
       const agentPath = `${basePath}/MaaAgentBinary`;
       const ctrlId = await maaService.connectController(instanceId, config, agentPath);
-      
+
       // 注册 ctrl_id 与设备名的映射
       registerCtrlIdName(ctrlId, device.name || device.address);
-      
+
       // 记录等待中的 ctrl_id，后续由回调处理完成状态
       setPendingCtrlId(ctrlId);
     } catch (err) {
@@ -327,19 +341,19 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
   const handleSelectWindow = async (win: Win32Window) => {
     setSelectedWindow(win);
     setShowDropdown(false);
-    
+
     // 自动连接
     setIsConnecting(true);
     setError(null);
-    
+
     try {
       const initialized = await ensureMaaInitialized();
       if (!initialized) {
         throw new Error('无法初始化 MaaFramework，请确保 MaaFramework 动态库在正确的位置');
       }
-      
+
       await maaService.createInstance(instanceId).catch(() => {});
-      
+
       let config: ControllerConfig;
       if (controllerType === 'Win32') {
         config = {
@@ -355,13 +369,13 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
           handle: win.handle,
         };
       }
-      
+
       const agentPath = `${basePath}/MaaAgentBinary`;
       const ctrlId = await maaService.connectController(instanceId, config, agentPath);
-      
+
       // 注册 ctrl_id 与设备名的映射
       registerCtrlIdName(ctrlId, win.window_name || win.class_name);
-      
+
       // 记录等待中的 ctrl_id，后续由回调处理完成状态
       setPendingCtrlId(ctrlId);
     } catch (err) {
@@ -376,7 +390,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
   // 获取设备列表
   const getDeviceList = () => {
     if (controllerType === 'Adb') {
-      return cachedAdbDevices.map(device => ({
+      return cachedAdbDevices.map((device) => ({
         id: `${device.adb_path}:${device.address}`,
         name: device.name,
         description: device.address,
@@ -385,7 +399,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
       }));
     }
     if (controllerType === 'Win32' || controllerType === 'Gamepad') {
-      return cachedWin32Windows.map(window => ({
+      return cachedWin32Windows.map((window) => ({
         id: String(window.handle),
         name: window.window_name || '(无标题)',
         description: window.class_name,
@@ -469,7 +483,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
               'w-full px-3 py-2.5 rounded-lg border bg-bg-tertiary border-border',
               'text-text-primary placeholder:text-text-muted',
               'focus:outline-none focus:border-accent transition-colors',
-              isConnected && 'opacity-60 cursor-not-allowed'
+              isConnected && 'opacity-60 cursor-not-allowed',
             )}
           />
         </div>
@@ -494,21 +508,25 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
                 'bg-bg-tertiary border-border',
                 isConnected
                   ? 'opacity-60 cursor-not-allowed'
-                  : 'hover:border-accent cursor-pointer'
+                  : 'hover:border-accent cursor-pointer',
               )}
             >
-              <span className={clsx(
-                'truncate',
-                (controllerType === 'Adb' ? selectedAdbDevice : selectedWindow)
-                  ? 'text-text-primary'
-                  : 'text-text-muted'
-              )}>
+              <span
+                className={clsx(
+                  'truncate',
+                  (controllerType === 'Adb' ? selectedAdbDevice : selectedWindow)
+                    ? 'text-text-primary'
+                    : 'text-text-muted',
+                )}
+              >
                 {getSelectedText()}
               </span>
-              <ChevronDown className={clsx(
-                'w-4 h-4 text-text-muted transition-transform',
-                showDropdown && 'rotate-180'
-              )} />
+              <ChevronDown
+                className={clsx(
+                  'w-4 h-4 text-text-muted transition-transform',
+                  showDropdown && 'rotate-180',
+                )}
+              />
             </button>
 
             {/* 下拉菜单 - 使用 fixed 定位避免被父容器裁剪 */}
@@ -523,21 +541,23 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
                 }}
               >
                 {deviceList.length > 0 ? (
-                  deviceList.map(item => (
+                  deviceList.map((item) => (
                     <button
                       key={item.id}
                       onClick={item.onClick}
                       className={clsx(
                         'w-full flex items-center justify-between px-3 py-2 text-left transition-colors',
                         'hover:bg-bg-hover',
-                        item.selected && 'bg-accent/10'
+                        item.selected && 'bg-accent/10',
                       )}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="text-sm text-text-primary truncate">{item.name}</div>
                         <div className="text-xs text-text-muted truncate">{item.description}</div>
                       </div>
-                      {item.selected && <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />}
+                      {item.selected && (
+                        <Check className="w-4 h-4 text-accent flex-shrink-0 ml-2" />
+                      )}
                     </button>
                   ))
                 ) : (
@@ -558,7 +578,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
               'bg-bg-tertiary border-border',
               isSearching || isConnecting || isConnected
                 ? 'opacity-50 cursor-not-allowed'
-                : 'hover:bg-bg-hover hover:border-accent'
+                : 'hover:bg-bg-hover hover:border-accent',
             )}
             title={t('controller.refresh')}
           >
@@ -592,7 +612,7 @@ export function DeviceSelector({ instanceId, controllerDef, onConnectionChange }
             'w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
             isConnecting || !canConnect()
               ? 'bg-accent/50 text-white/70 cursor-not-allowed'
-              : 'bg-accent text-white hover:bg-accent-hover'
+              : 'bg-accent text-white hover:bg-accent-hover',
           )}
         >
           {isConnecting ? (
