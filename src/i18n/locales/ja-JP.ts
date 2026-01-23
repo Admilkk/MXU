@@ -267,6 +267,8 @@ export default {
     cacheStats: 'キャッシュ項目: {{count}} 件',
     devMode: '開発者モード',
     devModeHint: '有効にすると F5 キーで UI をリフレッシュできます',
+    saveDraw: 'デバッグ画像を保存',
+    saveDrawHint: '認識と操作のデバッグ画像をログフォルダに保存します（再起動後は自動的にオフになります）',
   },
 
   // ウェルカムダイアログ

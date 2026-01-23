@@ -265,6 +265,8 @@ export default {
     cacheStats: '缓存条目: {{count}} 条',
     devMode: '开发模式',
     devModeHint: '启用后允许按 F5 刷新 UI',
+    saveDraw: '保存调试图像',
+    saveDrawHint: '保存识别和操作的调试图像到日志目录（重启软件后自动关闭）',
   },
 
   // 欢迎弹窗

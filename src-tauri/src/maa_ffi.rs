@@ -66,6 +66,10 @@ pub const MAA_GAMEPAD_TYPE_DUALSHOCK4: MaaGamepadType = 2;
 pub type MaaCtrlOption = i32;
 pub const MAA_CTRL_OPTION_SCREENSHOT_TARGET_SHORT_SIDE: MaaCtrlOption = 2;
 
+// 全局选项
+pub type MaaGlobalOption = i32;
+pub const MAA_GLOBAL_OPTION_SAVE_DRAW: MaaGlobalOption = 2;
+
 // 不透明句柄类型
 pub enum MaaResource {}
 pub enum MaaController {}
@@ -112,6 +116,8 @@ pub type MaaEventCallback = Option<
 
 // 函数指针类型定义
 type FnMaaVersion = unsafe extern "C" fn() -> *const c_char;
+type FnMaaSetGlobalOption =
+    unsafe extern "C" fn(MaaGlobalOption, *const c_void, MaaSize) -> MaaBool;
 type FnMaaStringBufferCreate = unsafe extern "C" fn() -> *mut MaaStringBuffer;
 type FnMaaStringBufferDestroy = unsafe extern "C" fn(*mut MaaStringBuffer);
 type FnMaaStringBufferGet = unsafe extern "C" fn(*const MaaStringBuffer) -> *const c_char;
@@ -240,6 +246,7 @@ pub struct MaaLibrary {
 
     // MaaFramework 函数
     pub maa_version: FnMaaVersion,
+    pub maa_set_global_option: FnMaaSetGlobalOption,
 
     // StringBuffer
     pub maa_string_buffer_create: FnMaaStringBufferCreate,
@@ -429,6 +436,7 @@ impl MaaLibrary {
             Ok(Self {
                 // Version
                 maa_version: load_fn!(framework_lib, "MaaVersion"),
+                maa_set_global_option: load_fn!(framework_lib, "MaaSetGlobalOption"),
 
                 // StringBuffer
                 maa_string_buffer_create: load_fn!(framework_lib, "MaaStringBufferCreate"),

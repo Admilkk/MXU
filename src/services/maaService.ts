@@ -621,6 +621,23 @@ export const maaService = {
     }
     await invoke('restart_as_admin');
   },
+
+  /**
+   * 设置保存调试图像
+   * @param enabled 是否启用
+   */
+  async setSaveDraw(enabled: boolean): Promise<boolean> {
+    if (!isTauri()) return false;
+    log.info('设置保存调试图像:', enabled);
+    try {
+      const result = await invoke<boolean>('maa_set_save_draw', { enabled });
+      log.info('设置保存调试图像成功:', enabled);
+      return result;
+    } catch (err) {
+      log.error('设置保存调试图像失败:', err);
+      throw err;
+    }
+  },
 };
 
 export default maaService;

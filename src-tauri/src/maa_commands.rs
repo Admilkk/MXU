@@ -6,6 +6,7 @@ use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
+use std::os::raw::c_void;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -2525,5 +2526,34 @@ pub fn restart_as_admin(app_handle: tauri::AppHandle) -> Result<(), String> {
     {
         let _ = app_handle;
         Err("此功能仅在 Windows 上可用".to_string())
+    }
+}
+
+/// 设置全局选项 - 保存调试图像
+#[tauri::command]
+pub fn maa_set_save_draw(enabled: bool) -> Result<bool, String> {
+    let lib = MAA_LIBRARY
+        .lock()
+        .map_err(|e| format!("Failed to lock library: {}", e))?;
+
+    if lib.is_none() {
+        return Err("MaaFramework not initialized".to_string());
+    }
+
+    let lib = lib.as_ref().unwrap();
+
+    let result = unsafe {
+        (lib.maa_set_global_option)(
+            crate::maa_ffi::MAA_GLOBAL_OPTION_SAVE_DRAW,
+            &enabled as *const bool as *const c_void,
+            std::mem::size_of::<bool>() as u64,
+        )
+    };
+
+    if result != 0 {
+        info!("保存调试图像: {}", if enabled { "启用" } else { "禁用" });
+        Ok(true)
+    } else {
+        Err("设置保存调试图像失败".to_string())
     }
 }

@@ -172,6 +172,8 @@ pub fn run() {
             // 权限检查命令
             maa_commands::is_elevated,
             maa_commands::restart_as_admin,
+            // 全局选项命令
+            maa_commands::maa_set_save_draw,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

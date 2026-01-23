@@ -92,6 +92,8 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
     setShowOptionPreview,
     devMode,
     setDevMode,
+    saveDraw,
+    setSaveDraw,
     downloadStatus,
     downloadProgress,
     setDownloadStatus,
@@ -1138,6 +1140,31 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
                       className={clsx(
                         'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
                         devMode ? 'translate-x-5' : 'translate-x-0',
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {/* 保存调试图像 */}
+                <div className="flex items-center justify-between pt-4 border-t border-border">
+                  <div className="flex items-center gap-3">
+                    <Bug className="w-5 h-5 text-accent" />
+                    <div>
+                      <span className="font-medium text-text-primary">{t('debug.saveDraw')}</span>
+                      <p className="text-xs text-text-muted mt-0.5">{t('debug.saveDrawHint')}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSaveDraw(!saveDraw)}
+                    className={clsx(
+                      'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
+                      saveDraw ? 'bg-accent' : 'bg-bg-active',
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        'absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
+                        saveDraw ? 'translate-x-5' : 'translate-x-0',
                       )}
                     />
                   </button>

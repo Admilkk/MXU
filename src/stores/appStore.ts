@@ -61,6 +61,10 @@ interface AppState {
   currentPage: PageView;
   setCurrentPage: (page: PageView) => void;
 
+  // 调试选项（不落盘，每次启动默认关闭）
+  saveDraw: boolean;
+  setSaveDraw: (enabled: boolean) => void;
+
   // Interface 数据
   projectInterface: ProjectInterface | null;
   interfaceTranslations: Record<string, Record<string, string>>;
@@ -465,6 +469,19 @@ export const useAppStore = create<AppState>()(
     // 当前页面
     currentPage: 'main',
     setCurrentPage: (page) => set({ currentPage: page }),
+
+    // 调试选项（不落盘，每次启动默认关闭）
+    saveDraw: false,
+    setSaveDraw: async (enabled) => {
+      set({ saveDraw: enabled });
+      // 调用 MaaFramework API 设置全局选项
+      try {
+        const { maaService } = await import('@/services/maaService');
+        await maaService.setSaveDraw(enabled);
+      } catch (err) {
+        console.error('设置保存调试图像失败:', err);
+      }
+    },
 
     // Interface 数据
     projectInterface: null,
