@@ -147,31 +147,27 @@ export function LogsPanel() {
 
   return (
     <div className="flex-1 flex flex-col bg-bg-secondary rounded-lg border border-border overflow-hidden">
-      {/* 标题栏 */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+      {/* 标题栏（可点击展开/折叠上方面板） */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={toggleSidePanelExpanded}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleSidePanelExpanded();
+          }
+        }}
+        className="flex items-center justify-between px-3 py-2 border-b border-border hover:bg-bg-hover transition-colors cursor-pointer"
+      >
         <span className="text-sm font-medium text-text-primary">{t('logs.title')}</span>
         <div className="flex items-center gap-1">
-          {/* 展开/折叠上方面板 */}
-          <button
-            onClick={toggleSidePanelExpanded}
-            className={clsx(
-              'p-1.5 rounded-md transition-colors',
-              !sidePanelExpanded
-                ? 'text-accent bg-accent-light'
-                : 'text-text-secondary hover:bg-bg-hover',
-            )}
-            title={sidePanelExpanded ? t('logs.collapse') : t('logs.expand')}
-          >
-            <ChevronDown
-              className={clsx(
-                'w-4 h-4 transition-transform duration-150 ease-out',
-                sidePanelExpanded && 'rotate-180',
-              )}
-            />
-          </button>
           {/* 打开日志目录 */}
           <button
-            onClick={handleOpenLogDir}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenLogDir();
+            }}
             disabled={!isTauri() || !basePath}
             className={clsx(
               'p-1.5 rounded-md transition-colors',
@@ -185,7 +181,10 @@ export function LogsPanel() {
           </button>
           {/* 清空 */}
           <button
-            onClick={handleClear}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClear();
+            }}
             disabled={logs.length === 0}
             className={clsx(
               'p-1.5 rounded-md transition-colors',
@@ -197,6 +196,13 @@ export function LogsPanel() {
           >
             <Trash2 className="w-4 h-4" />
           </button>
+          {/* 展开/折叠上方面板 */}
+          <ChevronDown
+            className={clsx(
+              'w-4 h-4 text-text-muted transition-transform duration-150 ease-out',
+              sidePanelExpanded && 'rotate-180',
+            )}
+          />
         </div>
       </div>
 
