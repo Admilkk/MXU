@@ -204,3 +204,36 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out forwards;
 }
+
+/* Fade in animation for tooltips that pop up (above the element) */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 4px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.15s ease-out forwards;
+}
+
+/* New task badge breathing animation (background color) */
+@keyframes badgeBreathing {
+  0%,
+  100% {
+    background-color: var(--color-accent);
+    transform: scale(1);
+  }
+  50% {
+    background-color: color-mix(in srgb, var(--color-accent) 65%, white);
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-glow-accent {
+  animation: badgeBreathing 2s ease-in-out infinite;
+}

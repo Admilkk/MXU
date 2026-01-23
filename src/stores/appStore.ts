@@ -117,6 +117,12 @@ interface AppState {
   lastAddedTaskId: string | null;
   clearLastAddedTaskId: () => void;
 
+  // 新增任务名称列表（interface.json 快照对比检测到的新增任务）
+  newTaskNames: string[];
+  setNewTaskNames: (names: string[]) => void;
+  removeNewTaskName: (name: string) => void;
+  clearNewTaskNames: () => void;
+
   // 国际化文本解析
   resolveI18nText: (text: string | undefined, lang: string) => string;
 
@@ -474,17 +480,18 @@ export const useAppStore = create<AppState>()(
       const instanceNumber = get().nextInstanceNumber;
       const pi = get().projectInterface;
 
-      // 初始化所有任务，default_check 为 true 的任务默认勾选
+      // 只添加 default_check 为 true 的任务
       const defaultTasks: SelectedTask[] = [];
       if (pi) {
         pi.task.forEach((task) => {
-          // 递归初始化所有选项（包括嵌套选项）
+          if (!task.default_check) return;
+
           const optionValues =
             task.option && pi.option ? initializeAllOptionValues(task.option, pi.option) : {};
           defaultTasks.push({
             id: generateId(),
             taskName: task.name,
-            enabled: !!task.default_check,
+            enabled: true,
             optionValues,
             expanded: false,
           });
@@ -493,7 +500,6 @@ export const useAppStore = create<AppState>()(
 
       const newInstance: Instance = {
         id,
-        // 传入基础名称时拼接数字，未传入时使用 fallback
         name: name ? `${name} ${instanceNumber}` : `Config ${instanceNumber}`,
         selectedTasks: defaultTasks,
         isRunning: false,
@@ -503,6 +509,7 @@ export const useAppStore = create<AppState>()(
         instances: [...state.instances, newInstance],
         activeInstanceId: id,
         nextInstanceNumber: state.nextInstanceNumber + 1,
+        showAddTaskPanel: true, // 新建配置时自动展开添加任务面板
       }));
 
       return id;
@@ -898,6 +905,15 @@ export const useAppStore = create<AppState>()(
     lastAddedTaskId: null,
     clearLastAddedTaskId: () => set({ lastAddedTaskId: null }),
 
+    // 新增任务名称列表（会持久化到配置文件）
+    newTaskNames: [],
+    setNewTaskNames: (names) => set({ newTaskNames: names }),
+    removeNewTaskName: (name) =>
+      set((state) => ({
+        newTaskNames: state.newTaskNames.filter((n) => n !== name),
+      })),
+    clearNewTaskNames: () => set({ newTaskNames: [] }),
+
     // 国际化文本解析
     resolveI18nText: (text, lang) => {
       if (!text) return '';
@@ -915,8 +931,20 @@ export const useAppStore = create<AppState>()(
       // 获取保存时的任务快照，用于判断哪些是真正新增的任务
       const snapshotTaskNames = new Set(config.interfaceTaskSnapshot || []);
 
+      // 检测新增任务（相比快照）并与已保存的 newTaskNames 合并
+      const savedNewTaskNames = new Set(config.newTaskNames || []);
+      const detectedNewTaskNames: string[] = [];
+      if (pi) {
+        pi.task.forEach((task) => {
+          // 任务在快照中不存在即为新增任务，或者之前已标记为新增但用户未查看
+          if (!snapshotTaskNames.has(task.name) || savedNewTaskNames.has(task.name)) {
+            detectedNewTaskNames.push(task.name);
+          }
+        });
+      }
+
       const instances: Instance[] = config.instances.map((inst) => {
-        // 恢复已保存的任务
+        // 恢复已保存的任务（不再自动添加新增任务到列表）
         const savedTasks: SelectedTask[] = inst.tasks.map((t) => ({
           id: t.id,
           taskName: t.taskName,
@@ -925,27 +953,6 @@ export const useAppStore = create<AppState>()(
           optionValues: t.optionValues,
           expanded: false,
         }));
-
-        // 检查 interface.json 中是否有新增任务（相比快照），追加到列表末尾
-        // 只有在快照中不存在的任务才是真正新增的（用户删除的任务不会被重新添加）
-        if (pi) {
-          const userTaskNames = new Set(savedTasks.map((t) => t.taskName));
-          pi.task.forEach((task) => {
-            // 任务在快照中不存在（真正新增）且用户列表中也没有
-            if (!snapshotTaskNames.has(task.name) && !userTaskNames.has(task.name)) {
-              // 递归初始化所有选项（包括嵌套选项）
-              const optionValues =
-                task.option && pi.option ? initializeAllOptionValues(task.option, pi.option) : {};
-              savedTasks.push({
-                id: generateId(),
-                taskName: task.name,
-                enabled: false, // 新增任务默认不勾选
-                optionValues,
-                expanded: false,
-              });
-            }
-          });
-        }
 
         return {
           id: inst.id,
@@ -1005,6 +1012,9 @@ export const useAppStore = create<AppState>()(
         welcomeShownHash: config.settings.welcomeShownHash ?? '',
         devMode: config.settings.devMode ?? false,
         recentlyClosed: config.recentlyClosed || [],
+        // 记录新增任务，并在有新增时自动展开添加任务面板
+        newTaskNames: detectedNewTaskNames,
+        showAddTaskPanel: detectedNewTaskNames.length > 0,
       });
 
       // 应用主题（包括强调色）
@@ -1544,6 +1554,8 @@ function generateConfig(): MxuConfig {
     recentlyClosed: state.recentlyClosed,
     // 保存当前 interface.json 的任务名列表快照，用于下次加载时检测新增任务
     interfaceTaskSnapshot: state.projectInterface?.task.map((t) => t.name) || [],
+    // 保存用户尚未查看的新增任务
+    newTaskNames: state.newTaskNames,
   };
 }
 
@@ -1582,6 +1594,7 @@ useAppStore.subscribe(
     welcomeShownHash: state.welcomeShownHash,
     devMode: state.devMode,
     recentlyClosed: state.recentlyClosed,
+    newTaskNames: state.newTaskNames,
   }),
   () => {
     debouncedSaveConfig();

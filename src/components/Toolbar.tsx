@@ -1141,7 +1141,7 @@ export function Toolbar({ showAddPanel, onToggleAddPanel }: ToolbarProps) {
           className={clsx(
             'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm transition-colors',
             showAddPanel
-              ? 'bg-accent text-white'
+              ? 'bg-accent/10 text-accent'
               : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary',
           )}
           title={t('taskList.addTask')}

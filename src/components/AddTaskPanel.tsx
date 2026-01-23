@@ -1,13 +1,126 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Sparkles, Loader2 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { maaService } from '@/services/maaService';
+import { useResolvedContent } from '@/services/contentResolver';
 import { loggers, generateTaskPipelineOverride } from '@/utils';
 import { getInterfaceLangKey } from '@/i18n';
+import type { TaskItem } from '@/types/interface';
 import clsx from 'clsx';
 
 const log = loggers.task;
+
+/** 任务按钮组件：支持 hover 显示 description tooltip */
+function TaskButton({
+  task,
+  count,
+  isNew,
+  label,
+  langKey,
+  basePath,
+  onClick,
+}: {
+  task: TaskItem;
+  count: number;
+  isNew: boolean;
+  label: string;
+  langKey: string;
+  basePath: string;
+  onClick: () => void;
+}) {
+  const { t } = useTranslation();
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const { resolveI18nText, interfaceTranslations } = useAppStore();
+
+  // 获取翻译表
+  const translations = interfaceTranslations[langKey];
+
+  // 解析 description（支持文件/URL/Markdown）
+  const resolvedDescription = useResolvedContent(
+    task.description ? resolveI18nText(task.description, langKey) : undefined,
+    basePath,
+    translations,
+  );
+
+  const hasDescription = !!resolvedDescription.html || resolvedDescription.loading;
+
+  // 计算 tooltip 位置
+  useEffect(() => {
+    if (showTooltip && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setTooltipPos({
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+      });
+    }
+  }, [showTooltip]);
+
+  return (
+    <button
+      ref={buttonRef}
+      onClick={onClick}
+      onMouseEnter={() => hasDescription && setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+      className={clsx(
+        'relative flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left',
+        'bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border hover:border-accent',
+      )}
+    >
+      {/* 新增任务标记 */}
+      {isNew && (
+        <span className="absolute -top-2 -right-2 flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold uppercase rounded-full bg-accent text-white animate-pulse-glow-accent">
+          <Sparkles className="w-3 h-3" />
+          new
+        </span>
+      )}
+      <Plus className="w-4 h-4 flex-shrink-0 text-accent" />
+      <span className="flex-1 truncate">{label}</span>
+      {count > 0 && (
+        <span className="flex-shrink-0 px-1.5 py-0.5 text-xs rounded-full bg-accent/10 text-accent font-medium">
+          {count}
+        </span>
+      )}
+
+      {/* Description Tooltip - 使用 Portal 渲染到 body，避免被 overflow 裁剪 */}
+      {showTooltip &&
+        hasDescription &&
+        createPortal(
+          <div
+            className={clsx(
+              'fixed z-[9999] pointer-events-none',
+              'px-3 py-2 text-xs bg-bg-primary border border-border rounded-lg shadow-lg',
+              'w-max max-w-[280px] animate-fade-in-up',
+            )}
+            style={{
+              left: tooltipPos.x,
+              top: tooltipPos.y - 8,
+            }}
+          >
+            {resolvedDescription.loading ? (
+              <div className="flex items-center gap-1.5 text-text-muted">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>{t('taskItem.loadingDescription')}</span>
+              </div>
+            ) : (
+              <div
+                className="text-text-secondary [&_p]:my-0.5 [&_a]:text-accent [&_a]:hover:underline"
+                dangerouslySetInnerHTML={{ __html: resolvedDescription.html }}
+              />
+            )}
+            {/* Tooltip 箭头 */}
+            <div className="absolute left-1/2 top-full -translate-x-1/2 -mt-px">
+              <div className="w-2 h-2 bg-bg-primary border-r border-b border-border rotate-45 -translate-y-1" />
+            </div>
+          </div>,
+          document.body,
+        )}
+    </button>
+  );
+}
 
 export function AddTaskPanel() {
   const { t } = useTranslation();
@@ -18,10 +131,14 @@ export function AddTaskPanel() {
     addTaskToInstance,
     resolveI18nText,
     language,
+    basePath,
     // 任务运行状态管理
     setTaskRunStatus,
     registerMaaTaskMapping,
     appendPendingTaskId,
+    // 新增任务标记
+    newTaskNames,
+    removeNewTaskName,
   } = useAppStore();
 
   const instance = getActiveInstance();
@@ -53,6 +170,11 @@ export function AddTaskPanel() {
 
     const task = projectInterface.task.find((t) => t.name === taskName);
     if (!task) return;
+
+    // 如果是新增任务，移除 "new" 标记
+    if (newTaskNames.includes(taskName)) {
+      removeNewTaskName(taskName);
+    }
 
     // 先添加任务到列表
     addTaskToInstance(instance.id, task);
@@ -131,24 +253,19 @@ export function AddTaskPanel() {
             {filteredTasks.map((task) => {
               const count = taskCounts[task.name] || 0;
               const label = resolveI18nText(task.label, langKey) || task.name;
+              const isNew = newTaskNames.includes(task.name);
 
               return (
-                <button
+                <TaskButton
                   key={task.name}
+                  task={task}
+                  count={count}
+                  isNew={isNew}
+                  label={label}
+                  langKey={langKey}
+                  basePath={basePath}
                   onClick={() => handleAddTask(task.name)}
-                  className={clsx(
-                    'flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left',
-                    'bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border hover:border-accent',
-                  )}
-                >
-                  <Plus className="w-4 h-4 flex-shrink-0 text-accent" />
-                  <span className="flex-1 truncate">{label}</span>
-                  {count > 0 && (
-                    <span className="flex-shrink-0 px-1.5 py-0.5 text-xs rounded-full bg-accent/10 text-accent font-medium">
-                      {count}
-                    </span>
-                  )}
-                </button>
+                />
               );
             })}
           </div>
