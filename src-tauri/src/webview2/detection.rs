@@ -36,8 +36,8 @@ fn get_system_wow64_directory() -> Option<PathBuf> {
 /// 检测 WebView2 是否已安装（注册表 + DLL 双重检测）
 #[allow(unreachable_code)]
 pub fn is_webview2_installed() -> bool {
-    // 测试：强制视为未安装，以调试下载/安装流程。调试完请删除或注释下面这行。
-    return false;
+    // // 测试：强制视为未安装，以调试下载/安装流程。调试完请删除或注释下面这行。
+    // return false;
 
     let registry_paths = [
         r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
