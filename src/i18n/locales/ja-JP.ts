@@ -58,7 +58,7 @@ export default {
     customAccentNameRequired: '名前を入力してください',
     deleteCustomAccentConfirm: 'このカスタムアクセントを削除してもよろしいですか？',
     accentName: '名前',
-    accentNamePlaceholder: '例：エメラルドグリーン',
+    accentNamePlaceholder: '例：ダークバイオレット',
     accentMainColor: 'メインカラー',
     accentHoverColor: 'ホバーカラー',
     accentLightColor: 'ライト背景',

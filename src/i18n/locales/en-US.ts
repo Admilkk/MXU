@@ -58,7 +58,7 @@ export default {
     customAccentNameRequired: 'Please enter a name',
     deleteCustomAccentConfirm: 'Are you sure you want to delete this custom accent?',
     accentName: 'Name',
-    accentNamePlaceholder: 'e.g. Emerald Green',
+    accentNamePlaceholder: 'e.g. Dark Violet',
     accentMainColor: 'Main Color',
     accentHoverColor: 'Hover Color',
     accentLightColor: 'Light Background',

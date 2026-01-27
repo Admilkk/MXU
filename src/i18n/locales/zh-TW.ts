@@ -58,7 +58,7 @@ export default {
     customAccentNameRequired: '請輸入名稱',
     deleteCustomAccentConfirm: '確定要刪除這個自訂強調色嗎？',
     accentName: '名稱',
-    accentNamePlaceholder: '例如：寶石綠',
+    accentNamePlaceholder: '例如：小黑紫',
     accentMainColor: '主色',
     accentHoverColor: '懸停色',
     accentLightColor: '淺色背景',
