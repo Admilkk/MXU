@@ -8,6 +8,13 @@ import { useTranslation } from 'react-i18next';
 import { maaService, type MaaCallbackDetails } from '@/services/maaService';
 import { useAppStore, type LogType } from '@/stores/appStore';
 import { loggers } from '@/utils/logger';
+import { getInterfaceLangKey } from '@/i18n';
+import {
+  resolveI18nText,
+  detectContentType,
+  resolveContent,
+  markdownToHtmlWithLocalImages,
+} from '@/services/contentResolver';
 
 const log = loggers.app;
 
@@ -23,6 +30,52 @@ function replaceFocusPlaceholders(
     }
     return match;
   });
+}
+
+/**
+ * 解析 focus 消息内容
+ * 支持国际化（$开头）、URL、文件路径、Markdown 格式
+ */
+async function resolveFocusContent(
+  template: string,
+  details: MaaCallbackDetails & Record<string, unknown>,
+): Promise<{ message: string; html?: string }> {
+  const state = useAppStore.getState();
+  const langKey = getInterfaceLangKey(state.language);
+  const translations = state.interfaceTranslations[langKey];
+  const basePath = state.basePath;
+
+  // 1. 替换占位符
+  const withPlaceholders = replaceFocusPlaceholders(template, details);
+
+  // 2. 处理国际化
+  const resolved = resolveI18nText(withPlaceholders, translations);
+
+  // 3. 检测内容类型
+  const contentType = detectContentType(resolved);
+
+  // 4. 如果是直接文本，检查是否包含 Markdown 格式
+  if (contentType === 'text') {
+    // 检测是否包含 Markdown 特征（链接、加粗、代码等）
+    const hasMarkdown = /[*_`#\[\]!]/.test(resolved) || resolved.includes('\n');
+    if (hasMarkdown) {
+      const html = await markdownToHtmlWithLocalImages(resolved, basePath);
+      return { message: resolved, html };
+    }
+    return { message: resolved };
+  }
+
+  // 5. 加载外部内容（URL 或文件）
+  try {
+    const loadedContent = await resolveContent(resolved, { translations, basePath });
+    // 将加载的内容转换为 HTML（支持 Markdown）
+    const html = await markdownToHtmlWithLocalImages(loadedContent, basePath);
+    return { message: loadedContent, html };
+  } catch (err) {
+    log.warn(`加载 focus 内容失败 [${resolved}]:`, err);
+    // 加载失败时返回原始文本
+    return { message: resolved };
+  }
 }
 
 // 检查是否是连接动作
@@ -108,12 +161,12 @@ export function useMaaCallbackLogger() {
   }, [t, addLog]);
 }
 
-function handleCallback(
+async function handleCallback(
   instanceId: string,
   message: string,
   details: MaaCallbackDetails & Record<string, unknown>,
   t: (key: string, options?: Record<string, unknown>) => string,
-  addLog: (instanceId: string, log: { type: LogType; message: string }) => void,
+  addLog: (instanceId: string, log: { type: LogType; message: string; html?: string }) => void,
 ) {
   // 获取 ID 名称映射函数
   const { getCtrlName, getCtrlType, getResName, getTaskName, getTaskNameByEntry } =
@@ -123,8 +176,9 @@ function handleCallback(
   const focus = details.focus as Record<string, string> | undefined;
   if (focus && focus[message]) {
     const focusTemplate = focus[message];
-    const focusMessage = replaceFocusPlaceholders(focusTemplate, details);
-    addLog(instanceId, { type: 'focus', message: focusMessage });
+    // 异步解析 focus 内容（支持国际化、URL、文件、Markdown）
+    const resolved = await resolveFocusContent(focusTemplate, details);
+    addLog(instanceId, { type: 'focus', message: resolved.message, html: resolved.html });
     return;
   }
 

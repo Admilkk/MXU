@@ -229,10 +229,18 @@ export function LogsPanel() {
                 <span className="text-text-muted flex-shrink-0">
                   [{log.timestamp.toLocaleTimeString()}]
                 </span>
-                <span className="break-all">
-                  {getLogPrefix(log.type)}
-                  {log.message}
-                </span>
+                {log.html ? (
+                  // 渲染富文本内容（focus 消息支持 Markdown/HTML）
+                  <span
+                    className="break-all focus-content"
+                    dangerouslySetInnerHTML={{ __html: log.html }}
+                  />
+                ) : (
+                  <span className="break-all">
+                    {getLogPrefix(log.type)}
+                    {log.message}
+                  </span>
+                )}
               </div>
             ))}
             <div ref={logsEndRef} />
