@@ -32,16 +32,25 @@ const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
 const MAX_CONSECUTIVE_FAILURES = 20;
 const API_TIMEOUT = 30000;
 
-// 内存压力检测，OOM 保护
+// 内存压力检测，防止长时间截图导致 OOM
 const MEMORY_CHECK_INTERVAL = 10;
 const MEMORY_WARNING_THRESHOLD = 0.8;
 const MEMORY_CRITICAL_THRESHOLD = 0.9;
+
+// 启动时检测可用的接口
+let memoryApiAvailable: boolean | null = null;
 
 function checkMemoryUsage(): { used: number; limit: number; ratio: number } | null {
   const perf = performance as Performance & {
     memory?: { usedJSHeapSize: number; jsHeapSizeLimit: number };
   };
-  if (!perf.memory) return null;
+  if (memoryApiAvailable === null) {
+    memoryApiAvailable = !!(perf.memory && typeof perf.memory.usedJSHeapSize === 'number');
+    log.debug(memoryApiAvailable ? '内存检测使用 performance.memory' : '无可用内存 API，跳过内存检测');
+  }
+  if (!memoryApiAvailable || !perf.memory) {
+    return null;
+  }
   const { usedJSHeapSize: used, jsHeapSizeLimit: limit } = perf.memory;
   return { used, limit, ratio: used / limit };
 }
@@ -205,16 +214,16 @@ export function ScreenshotPanel() {
         }
       }
 
-      if (skipThisFrame) {
-        await new Promise((resolve) => setTimeout(resolve, frameIntervalRef.current || 100));
-        continue;
-      }
-
       // 等待下一帧时间
       const now = Date.now();
       const sleepTime = nextFrameTime - now;
       if (sleepTime > 0) {
         await new Promise((resolve) => setTimeout(resolve, sleepTime));
+      }
+
+      // 跳帧时只等待不截图
+      if (skipThisFrame) {
+        continue;
       }
 
       // 计算下一帧时间
